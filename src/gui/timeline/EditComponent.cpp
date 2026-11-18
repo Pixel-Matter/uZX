@@ -5,8 +5,33 @@
 #include "PlayheadComponent.h"
 #include "PsgClipComponent.h"
 #include "../../controllers/App.h"
+#include "../../controllers/MainCommands.h"
 
 namespace MoTool {
+
+namespace {
+
+bool hasClips(te::Edit& edit) {
+    for (auto* track : te::getTracksOfType<te::ClipTrack>(edit, true))
+        if (! track->getClips().isEmpty())
+            return true;
+    return false;
+}
+
+/** What opens a file, as the menu shows it: "⌘O" on a Mac, "Ctrl+O" elsewhere. */
+String describeOpenKey(te::Edit& edit) {
+    if (auto* commands = edit.engine.getUIBehaviour().getApplicationCommandManager())
+        if (auto keys = commands->getKeyMappings()->getKeyPressesAssignedToCommand(Commands::MainAppCommands::fileOpen);
+            ! keys.isEmpty())
+           #if JUCE_MAC
+            return keys.getFirst().getTextDescriptionWithIcons();
+           #else
+            return keys.getFirst().getTextDescription().replace("ctrl", "Ctrl").removeCharacters(" ");
+           #endif
+    return "File > Open";
+}
+
+}  // namespace
 
 
 //==============================================================================
@@ -54,6 +79,27 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
         legend = std::make_unique<PsgLegendComponent>();
         addAndMakeVisible(*legend);
     }
+    if (! editViewState.showClipHeaders && ! editViewState.vizMode) {
+        emptyHint = std::make_unique<Label>();
+        emptyHint->setText("Drop a PSG file, a TAYM file or a tracker module here,\nor open one with "
+                               + describeOpenKey(edit),
+                           dontSendNotification);
+        emptyHint->setJustificationType(Justification::centred);
+        emptyHint->setFont(FontOptions(17.0f));
+        emptyHint->setColour(Label::textColourId, Colors::Theme::textPrimary);
+        emptyHint->setColour(Label::backgroundColourId, Colors::Theme::backgroundAlt);  // over the grid lines
+        emptyHint->setInterceptsMouseClicks(false, false);
+        addChildComponent(*emptyHint);
+    }
+    updateEmptyHint();
+}
+
+void EditComponent::updateEmptyHint() {
+    const bool empty = ! hasClips(edit);
+    if (emptyHint != nullptr)
+        emptyHint->setVisible(empty);
+    if (legend != nullptr)
+        legend->setVisible(! empty);  // no colours to explain yet
 }
 
 EditComponent::~EditComponent() {
@@ -75,13 +121,17 @@ void EditComponent::valueTreePropertyChanged(juce::ValueTree& v, const juce::Ide
 }
 
 void EditComponent::valueTreeChildAdded(ValueTree&, ValueTree& c) {
-    if (te::Clip::isClipState(c) || te::TrackList::isTrack(c))
+    if (te::Clip::isClipState(c) || te::TrackList::isTrack(c)) {
         markAndUpdate(updateScrollRange);
+        markAndUpdate(updateEmpty);
+    }
 }
 
 void EditComponent::valueTreeChildRemoved(ValueTree&, ValueTree& c, int) {
-    if (te::Clip::isClipState(c) || te::TrackList::isTrack(c))
+    if (te::Clip::isClipState(c) || te::TrackList::isTrack(c)) {
         markAndUpdate(updateScrollRange);
+        markAndUpdate(updateEmpty);
+    }
 }
 
 void EditComponent::viewRangeChanged() {
@@ -105,6 +155,8 @@ void EditComponent::handleAsyncUpdate() {
     }
     if (compareAndReset(updateScrollRange))
         updateScrollBar();
+    if (compareAndReset(updateEmpty))
+        updateEmptyHint();
 }
 
 void EditComponent::paint(Graphics& g) {
@@ -141,6 +193,13 @@ void EditComponent::resized() {
     if (legend != nullptr)
         legend->setTopRightPosition(timeline(r).getRight() - ClipHeader::pad,
                                     r.getY() + ClipComponent::ringWidth + ClipHeader::pad);
+    if (emptyHint != nullptr) {
+        const auto font = emptyHint->getFont();
+        int textWidth = 0;
+        for (const auto& line : StringArray::fromLines(emptyHint->getText()))
+            textWidth = jmax(textWidth, GlyphArrangement::getStringWidthInt(font, line));
+        emptyHint->setBounds(timeline(r).withSizeKeepingCentre(textWidth + 48, roundToInt(font.getHeight() * 2) + 32));
+    }
     trackViewport.setBounds(r);
     if (options.autoFitTrackHeights)
         tracksContainer.setBounds(r.withTrimmedRight(fittedTracksScroll ? scrollbarWidth : 0)

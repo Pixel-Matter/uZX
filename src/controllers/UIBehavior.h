@@ -134,7 +134,8 @@ public:
         // AudioSettingsComponent wraps the JUCE selector and prevents an unplayable configuration
         // (a separate input device different from the output) from being applied - see its docs.
         o.content.setOwned(
-            new AudioSettingsComponent(getActiveController().getEngine().getDeviceManager().deviceManager));
+            new AudioSettingsComponent(getActiveController().getEngine().getDeviceManager().deviceManager,
+                                       MoToolApp::hasMidiControl()));  // the Player records nothing
         o.useNativeTitleBar = true;
         o.escapeKeyTriggersCloseButton = true;
         o.resizable = true;

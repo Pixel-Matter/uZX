@@ -7,6 +7,7 @@
 | Planning | [ROADMAP.md](ROADMAP.md) | Open work by milestone, highest priority first |
 | Planning | [TODO.md](TODO.md) | Granular open tasks for Studio and the shared engine |
 | Planning | [refactoring.md](refactoring.md) | Code-review findings behind the TODO's refactoring list, and notes not promoted to findings |
+| Planning | [ux-review.md](ux-review.md) | Open findings of the Player v1.0 UX review |
 | Planning | [ux.md](ux.md) | Shared interaction decisions and the Player's main user tasks |
 | Contributors | [ux-testing.md](ux-testing.md) | Driving the apps on macOS for UX checks and guide screenshots |
 | Design | [design/tuning.md](design/tuning.md) | Tuning background, the tuning model, detection on PSG clips |

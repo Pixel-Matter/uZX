@@ -118,7 +118,26 @@ bool PlayerDocumentComponent::isInterestedInFileDrag(const StringArray& files) {
     });
 }
 
+void PlayerDocumentComponent::fileDragEnter(const StringArray&, int, int) {
+    fileDragOver_ = true;  // only called for files isInterestedInFileDrag accepts
+    repaint();
+}
+
+void PlayerDocumentComponent::fileDragExit(const StringArray&) {
+    fileDragOver_ = false;
+    repaint();
+}
+
+void PlayerDocumentComponent::paintOverChildren(Graphics& g) {
+    if (! fileDragOver_)
+        return;
+    g.setColour(Colors::Theme::primary);
+    g.drawRect(getLocalBounds(), 3);
+}
+
 void PlayerDocumentComponent::filesDropped(const StringArray& paths, int /*x*/, int /*y*/) {
+    fileDragOver_ = false;
+    repaint();
     Array<File> files;
     for (auto& path : paths)
         files.add(File(path));

@@ -147,8 +147,8 @@ public:
             case transportStepBack: case transportStepForward: case transportFrameBack: case transportFrameForward:
                 return isPlayer;
 
-            // the Player can't add tracks or chips back, records nothing, and has no Studio windows
-            case fileNew: case fileImportAudio: case editDelete:
+            // the Player can't add tracks or chips back (Open replaces the tune, so it has no Import), records nothing, and has no Studio windows
+            case fileNew: case fileImportPsg: case fileImportAudio: case editDelete:
             case transportRecord: case transportRecordStop: case transportPreservePsgTiming:
             case addAudioTrack: case trackRenderToAudio: case trackRenderToPsg: case viewZoomToSelection:
             case settingsPlugins: case settingsTuningTables:

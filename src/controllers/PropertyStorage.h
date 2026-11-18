@@ -14,16 +14,14 @@ public:
 
     ~PropertyStorage() override = default;
 
+    /** The folder of the app's settings file, where the app keeps its own data. */
+    static File getAppDataFolder(const String& appName) {
+        return makeOptions(appName).getDefaultFile().getParentDirectory();
+    }
+
     PropertiesFile& getPropertiesFile() override {
         if (propertiesFile == nullptr) {
-            PropertiesFile::Options options;
-            options.millisecondsBeforeSaving = 2000;
-            options.storageFormat = PropertiesFile::storeAsXML;
-            options.applicationName = getApplicationName();
-            options.folderName = getApplicationName();
-            options.filenameSuffix = ".settings";
-            options.osxLibrarySubFolder = "Application Support";
-
+            const auto options = makeOptions(getApplicationName());
             propertiesFile = std::make_unique<PropertiesFile>(options.getDefaultFile(), options);
             TRACKTION_LOG("Properties file: " + propertiesFile->getFile().getFullPathName());
         }
@@ -60,6 +58,17 @@ public:
         return ProjectInfo::versionString;
     }
 private:
+    static PropertiesFile::Options makeOptions(const String& appName) {
+        PropertiesFile::Options options;
+        options.millisecondsBeforeSaving = 2000;
+        options.storageFormat = PropertiesFile::storeAsXML;
+        options.applicationName = appName;
+        options.folderName = appName;
+        options.filenameSuffix = ".settings";
+        options.osxLibrarySubFolder = "Application Support";
+        return options;
+    }
+
     std::unique_ptr<PropertiesFile> propertiesFile;
 };
 

@@ -454,6 +454,34 @@ private:
         for (auto* child : player.getChildren())
             legends += dynamic_cast<PsgLegendComponent*>(child) != nullptr ? 1 : 0;
         expectEquals(legends, 1);
+
+        auto* hint = findChild<Label>(player);
+        expect(hint != nullptr && ! hint->isVisible(), "no hint to open a file while there is a tune");
+
+        beginTest("With nothing to play, the Player says how to open a tune, and shows no legend until then");
+        {
+            auto empty = te::Edit::createSingleTrackEdit(engine);
+            EditViewState emptyView(*empty, selectionManager);
+            emptyView.showHeaders = false;
+            emptyView.showClipHeaders = false;
+            EditComponent emptyPlayer(*empty, emptyView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+            emptyPlayer.setSize(1000, 600);
+            TestHelpers::flushMessageQueue();
+
+            auto* emptyHint = findChild<Label>(emptyPlayer);
+            auto* legend = findChild<PsgLegendComponent>(emptyPlayer);
+            expect(emptyHint != nullptr && emptyHint->isVisible());
+            expect(emptyHint != nullptr && emptyHint->getText().contains("Drop"));
+            expect(emptyHint != nullptr && ! emptyHint->getBounds().isEmpty());
+            expect(legend != nullptr && ! legend->isVisible());
+
+            const uZX::PsgRegsFrame tone {{uZX::PsgRegType::Mixer, 0x3e}, {uZX::PsgRegType::VolumeA, 15}};
+            uZX::PsgData data {std::vector<uZX::PsgRegsFrame>(50, tone), {50.0, 1}};
+            PsgClip::insertTo(*te::getAudioTracks(*empty)[0], data, {{0_tp, 1_td}, {}}, "PSG");
+            TestHelpers::flushMessageQueue();
+            expect(! emptyHint->isVisible(), "the hint goes once a tune is open");
+            expect(legend->isVisible(), "and the legend comes");
+        }
     }
 
     template <typename T>

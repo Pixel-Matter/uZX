@@ -4,6 +4,17 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Audio settings
+- Player: the audio settings show only the output, without the audio inputs and MIDI ports it never uses
+- Without a working audio device at startup, a message says what is wrong and offers **Open Audio Settings**, where the settings opened on their own without a word
+
+### Opening files
+- Fixed: Studio, the app for `.uzx` files, opened on its last project when a project was opened from Finder or passed on the command line
+- Player: with no tune open, the window says how to open one, where it showed an empty grid and the colour legend; a file dragged over the window outlines it
+- Player: **File → Import PSG** (`Cmd+I`) is gone; **Open** does the same
+- Player: each tune keeps its stereo, mutes and other changes. Opening it again brings them back, and they survive a restart, where the copies lived in the temp folder and opening a tune again reset it. Open Recent lists the tunes
+- Fixed: several files selected in Finder and opened in the Player, such as the files of a Turbo Sound set, did nothing; so did several paths on the command line. They open together, and a file that can't be found or opened is named in a message
+
 ### Timeline
 - Dragging the ruler, or the tracks with the middle button, keeps to the direction it starts in: sideways only scrolls, up or down only zooms, and a diagonal start does both
 - The loop range's ends show as lines down the tracks: in the loop's colour while looping, grey while not

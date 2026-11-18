@@ -21,10 +21,9 @@ public:
     void handleOpenFiles(const Array<File>& files);
     void handleOpenRecent(int fileIndex);
     void handleClearRecentFiles();
-    /** Saves in place; an edit that only lives in the temp folder goes through Save As. */
+    /** Saves in place; a working copy of a tune goes through Save As. */
     void handleSave();
     void handleSaveAs();
-    void handleImportPsgReplace();
 
     /** Viz mode: full screen with the notes and each chip's scopes, as the VizOptions in the app
         settings choose. An app state, not saved: it stays on for the next file opened. */
@@ -36,6 +35,8 @@ private:
     std::unique_ptr<te::Edit> createOrLoadStartupEdit() override;
     void releaseEditDependents() override;
     void showEdit() override;
+    bool canOpen(const File& file) const override;
+    void openFiles(const Array<File>& files) override;
     void updateWindowTitle();
     /** Rebuilds the view for Viz mode or out of it, telling what Viz mode shows when its layout or
         scopes change. */
@@ -43,8 +44,11 @@ private:
     /** The app settings changed: maybe the Viz options, from the View menu, the V key or Render Video. */
     void appSettingsChanged();
 
-    void importPsgsToNewTracks(const Array<File>& files);
+    /** Opens the tune's working copy, or imports the tune into a new one when it has none or the
+        tune files changed since. */
     void importPsgsToNewEdit(const Array<File>& files);
+    /** Working copies of tunes kept; older ones are deleted, which forgets their stereo and mutes. */
+    static constexpr int maxTuneEdits = 100;
 
     std::unique_ptr<RememberedStereo> rememberedStereo_;
     bool vizMode_ = false;

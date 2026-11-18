@@ -27,12 +27,16 @@ public:
     // FileDragAndDropTarget
     bool isInterestedInFileDrag(const StringArray& files) override;
     void filesDropped(const StringArray& files, int x, int y) override;
+    void fileDragEnter(const StringArray& files, int x, int y) override;
+    void fileDragExit(const StringArray& files) override;
+    void paintOverChildren(Graphics&) override;
 
 private:
     EditViewState& editViewState_;
     TransportBar transportBar_;
     EditComponent editComponent_;
     std::unique_ptr<VizHint> vizHint_;
+    bool fileDragOver_ = false;  // a file it opens is dragged over the window
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerDocumentComponent)
 };

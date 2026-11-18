@@ -105,6 +105,10 @@ public:
 
     void bringWindowToFront();
 
+    /** Opens the files a command line names, or that Finder hands over, as openFiles() does, and names
+        those it can't find or open. */
+    void handleOpenCommandLine(const String& commandLine);
+
     void zoomHorizontal(float increment);
     virtual void zoomToSelection() {}
     void zoomToFitHorizontally(bool rememberZoom = true);
@@ -124,6 +128,10 @@ protected:
     /** Builds the app's own state for the new edit_, the window content and the title. */
     virtual void showEdit() = 0;
     virtual void devicesChanged() {}
+    /** Whether the app opens this kind of file, from a command line or Finder. */
+    virtual bool canOpen(const File&) const { return false; }
+    /** Opens files that canOpen(), all of them existing. */
+    virtual void openFiles(const Array<File>&) {}
 
     te::Engine& engine_;
     MainWindow window_ {engine_};
@@ -166,6 +174,9 @@ private:
     void showEdit() override;
 
     void devicesChanged() override;
+    bool canOpen(const File& file) const override;
+    /** Opens the first project; Studio registers only projects as its documents. */
+    void openFiles(const Array<File>& files) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ArrangerController)
 };

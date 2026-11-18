@@ -24,6 +24,7 @@
 #include "../plugins/uZX/midi_logger/MidiLoggerPlugin.h"
 #include "../plugins/uZX/scope/ScopePlugin.h"
 
+#include "../util/CommandLine.h"
 #include "../util/FileOps.h"
 #include "../util/Helpers.h"
 #include "controllers/App.h"
@@ -183,10 +184,13 @@ void AppController::ensureMinimumSampleRate() {
     auto& deviceManager = engine_.getDeviceManager().deviceManager;
     auto* currentDevice = deviceManager.getCurrentAudioDevice();
 
-    bool audioOk = false;
+    String problem = "No audio output device is selected.";
 
     if (currentDevice != nullptr) {
         auto currentSampleRate = currentDevice->getCurrentSampleRate();
+        problem = "The audio device \"" + currentDevice->getName() + "\" runs at "
+                  + String(roundToInt(currentSampleRate)) + " Hz. Choose a sample rate of "
+                  + String(roundToInt(MIN_SAMPLE_RATE)) + " Hz or more.";
         if (currentSampleRate < MIN_SAMPLE_RATE) {
             const auto currentBufferSize = currentDevice->getCurrentBufferSizeSamples();
             DBG("WARNING: Sample rate " << currentSampleRate << " Hz is below minimum " << MIN_SAMPLE_RATE << " Hz"
@@ -218,14 +222,11 @@ void AppController::ensureMinimumSampleRate() {
             const auto newBufferSize = currentDevice->getCurrentBufferSizeSamples();
             DBG("  New buffer size: " << newBufferSize);
         } else {
-            audioOk = true;
+            problem = {};
         }
     }
-    if (!audioOk) {
-        MessageManager::callAsync([] {
-            te::AppFunctions::showSettingsScreen();
-        });
-    }
+    if (problem.isNotEmpty())  // said, so the settings that open on their own don't puzzle
+        MessageManager::callAsync([this, problem] { reportAudioDeviceProblem(problem); });
 }
 
 String AppController::getAudioDeviceError(bool requireRunning) const {
@@ -468,8 +469,8 @@ void AppController::getCommandInfo(CommandID commandID, ApplicationCommandInfo& 
             break;
 
         case MainAppCommands::fileReveal:
-            // the Player's opened PSG files live in the temp folder until saved
-            result.setActive(edit != nullptr && (!isPlayer || !EditFileOps::isTempEdit(*edit)));
+            // the Player's opened tunes have only a working copy until saved
+            result.setActive(edit != nullptr && (!isPlayer || !EditFileOps::isWorkingEdit(*edit)));
             break;
 
         case MainAppCommands::fileRenderVideo:
@@ -724,14 +725,8 @@ bool AppController::perform(const InvocationInfo& info) {
             break;
 
         case MainAppCommands::fileImportPsg:
-            if (isPlayer) {
-                MoToolApp::getPlayerController().handleImportPsgReplace();
-            } else {
-                auto* edit = MoToolApp::getArrangerController().getEdit();
-                if (edit != nullptr) {
-                    importPsgAsClip(*edit, selectionManager_);
-                }
-            }
+            if (auto* edit = MoToolApp::getArrangerController().getEdit())
+                importPsgAsClip(*edit, selectionManager_);
             break;
 
         case MainAppCommands::fileImportAudio:
@@ -999,7 +994,7 @@ void BaseController::initialize() {
 
     auto edit = createOrLoadStartupEdit();
     if (edit == nullptr)  // the last project is unreadable: start with an empty one
-        edit = createOrLoadEdit(EditFileOps::getTempEditFile());
+        edit = createOrLoadEdit(EditFileOps::getUnnamedEditFile(engine_.getPropertyStorage()));
     setEdit(std::move(edit));
 
     window_.restoreWindowBounds();
@@ -1023,6 +1018,32 @@ void BaseController::valueChanged(Value&) {
 void BaseController::bringWindowToFront() {
     window_.toFront(true);
     window_.setVisible(true);
+}
+
+void BaseController::handleOpenCommandLine(const String& commandLine) {
+    Array<File> openable;
+    StringArray missing, unsupported;
+    for (const auto& f : CommandLine::getFiles(commandLine)) {
+        if (f.existsAsFile() && canOpen(f))
+            openable.add(f);
+        else if (f.existsAsFile())
+            unsupported.add(f.getFileName());
+        else if (canOpen(f))  // what the app doesn't open may be an option's value
+            missing.add(f.getFullPathName());
+    }
+
+    if (! missing.isEmpty() || ! unsupported.isEmpty()) {
+        StringArray lines;
+        if (! missing.isEmpty())
+            lines.add("Not found:\n" + missing.joinIntoString("\n"));
+        if (! unsupported.isEmpty())
+            lines.add(JUCEApplication::getInstance()->getApplicationName() + " doesn't open these files:\n"
+                      + unsupported.joinIntoString("\n"));
+        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Can't Open File", lines.joinIntoString("\n\n"),
+                                         "OK");
+    }
+    if (! openable.isEmpty())
+        openFiles(openable);
 }
 
 void BaseController::changeListenerCallback(ChangeBroadcaster* source) {
@@ -1179,8 +1200,17 @@ void ArrangerController::devicesChanged() {
     // edit_->restartPlayback();
 }
 
+bool ArrangerController::canOpen(const File& file) const {
+    return file.hasFileExtension(EditFileOps::getDefaultEditFileSuffix());
+}
+
+void ArrangerController::openFiles(const Array<File>& files) {
+    EditFileOps::setRecentEditsDirectory(engine_.getPropertyStorage(), files.getFirst());
+    setEdit(createOrLoadEdit(files.getFirst()), true);
+}
+
 void ArrangerController::handleNew() {
-    auto newEdit = createOrLoadEdit(EditFileOps::getTempEditFile());
+    auto newEdit = createOrLoadEdit(EditFileOps::getUnnamedEditFile(engine_.getPropertyStorage()));
     setEdit(std::move(newEdit), true);
 }
 

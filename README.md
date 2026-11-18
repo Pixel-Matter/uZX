@@ -72,7 +72,10 @@ A modern tool for composing and playing back chiptune music for platforms using 
 
 ## Download
 
-See [Releases](https://github.com/Pixel-Matter/uZX/releases) for pre-built binaries.
+The Player and Studio are released separately, on the same [Releases](https://github.com/Pixel-Matter/uZX/releases) page.
+
+- **µZX Player**: take the newest [Player release](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true), tagged `player-v…`, and download `uZXPlayer-<version>-macOS.dmg`. Windows (`-windows-x64.zip`) and Linux (`-linux-x86_64.tar.gz`) builds are there too, unsigned and less tested.
+- **µZX Studio**: releases tagged `v…`, files named `uZX-<version>-…`. Studio is a work in progress, so its releases are pre-releases.
 
 ### macOS Setup
 

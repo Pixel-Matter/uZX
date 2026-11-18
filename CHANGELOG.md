@@ -65,6 +65,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - A TAYM exported by Bitphase opens on its own tuning table (or its A4, for a custom 12TET table) and with the tempo and groove of the rows it mostly repeats, instead of detected ones
 - Fixed: note slides in Pro Tracker 2 and 3, Vortex Tracker, ASC Sound Master and Fast Tracker modules play as in the trackers (zxtune updated)
 - Fixed: a module whose groove starts after an intro, or varies now and then (3-5-3-3 with a 4-4-3-3), opened at the tempo of its commonest row length instead of its groove's
+- A tune that starts before its first bar line, with a pickup or a few frames ahead of its first row, keeps its clip on the bar line: the clip begins with rests, where it used to be moved right to start in the middle of bar 1. Projects saved by this version can't be opened by older ones
 - A tracker module with a pickup, or an intro of an odd length, is placed by its patterns: the bar lines fall where most of them start, so the first full pattern starts bar 2 instead of the first row starting bar 1
 - A tracker module's patterns are bar lines: its beat and its meter fill them. A beat of 3, 6 or 7 rows no longer comes out of a module with 64-row patterns, and the time signature is set whenever only bars of 3 or only bars of 4 beats fill the patterns
 - Fixed: a module whose rows follow no pattern, such as rows of 4-4-4-4-4-4-4-3 frames with a longer round now and then, opened at eight times its commonest row (32 frames to the beat) instead of what its rows usually make (31)

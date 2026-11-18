@@ -141,7 +141,8 @@ juce::Optional<Result> detect(const std::vector<const uZX::PsgData*>& chips,
     the row pattern as the grid subdivision, sets the time signature to
     beatsPerBar/4 when the meter is clear, and puts the first row on a bar line:
     a silent lead-in is trimmed with the clip offsets, an audible one (a dump that
-    starts mid-row) moves the clips right so the first row lands on bar 2.
+    starts mid-row) gets rests before it inside the clips (PsgClip::setLeadInFrames), which
+    stay on their bar line, so the first row lands on bar 2.
     Importing into a project that already has clips keeps its tempo and meter.
 
     Musical pickups (notes before the first downbeat on the row grid) are not

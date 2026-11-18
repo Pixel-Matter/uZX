@@ -68,6 +68,7 @@ namespace IDs {
     DECLARE_ID(clipTuningTonic) // just-intonation tonic (0 = C .. 11 = B) of clipTuningA4; absent = C
     DECLARE_ID(clipKeyTonic)    // user-chosen key tonic (0 = C .. 11 = B) for a PSG clip; absent = detected
     DECLARE_ID(clipKeyMinor)    // user-chosen key mode for a PSG clip (true = minor)
+    DECLARE_ID(psgLeadIn)       // empty frames before a PSG clip's first frame, inside the clip; absent = none
     DECLARE_ID(psgTune)         // id shared by PSG clips imported as one tune (Turbo Sound chips); absent = alone
     DECLARE_ID(TIMERS)          // a PSG clip's timers (ClipTimers): the bank, and a TIMER for each command
     DECLARE_ID(TIMER)

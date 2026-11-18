@@ -69,6 +69,13 @@ public:
         }
     }
 
+    /** Empty frames inside the clip before its first frame: the clip starts on a bar line and the
+        tune that many frames later, as a bar that begins with rests before a pickup. A clip's
+        offset cannot do it: the engine holds an offset at zero or more, so a clip never starts
+        before its content. Frame indices stay the tune's own. */
+    int getLeadInFrames() const { return juce::jmax(0, (int) state.getProperty(IDs::psgLeadIn, 0)); }
+    void setLeadInFrames(int frames, juce::UndoManager*);
+
     /** The clip's frames as a register dump at the rate the clip plays at, a frame per frame index
         up to the last one that changes a register: the registers that changed, and the envelope
         shape wherever it restarts. What the tempo detection reads. */

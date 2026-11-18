@@ -88,6 +88,8 @@ te::BeatPosition PsgList::getFrameBeatPosition(const PsgClip& c, int frameIndex)
     if (frameIndex < 0)
         return {};
 
+    // The clip's lead-in comes first: empty frames inside the clip before the tune's frame 0
+    frameIndex += c.getLeadInFrames();
     // PsgClip::initialise guarantees framesPerBeat > 0 for any clip-attached list.
     const auto framesPerBeat = c.getPsg().getFramesPerBeat();
     jassert(framesPerBeat > 0.0);

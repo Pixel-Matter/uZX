@@ -54,8 +54,10 @@ File getRendersDirectory(tracktion::Edit& edit);
 
     2: a PSG clip's frame restarts the envelope where it sets the retrigger, not wherever it sets the shape
        (PsgList converts older clips); the chip controllers in MIDI clips have MIDI's value ranges: a switch
-       is on from 64, controller 70 is one of eight envelope shapes, controller 2 sweeps the noise periods. */
-inline constexpr int editFormatVersion = 2;
+       is on from 64, controller 70 is one of eight envelope shapes, controller 2 sweeps the noise periods.
+    3: a PSG clip may start with empty frames before its first frame (psgLeadIn); an older app would play
+       such a clip that much early. */
+inline constexpr int editFormatVersion = 3;
 
 /** The format version an edit file was saved with: 0 for files from before versioning or non-XML ones. */
 int readEditFormatVersion(const File& editFile);

@@ -465,13 +465,16 @@ public:
                 plain.push_back(rows[row]);
             expectEquals(PsgTempo::detect({&tune}, rows, plain)->firstRowFrame, 0);
 
-            // On import the clip moves right, so the bar line after the pickup is bar 2
+            // On import the clip stays on its bar line and starts with rests, so the bar line after the pickup is bar 2
             auto& engine = *tracktion::Engine::getEngines()[0];
             auto edit = Edit::createSingleTrackEdit(engine);
             const auto length = tracktion::TimeDuration::fromSeconds(tune.getLengthSeconds());
             auto clip = PsgClip::insertTo(*getAudioTracks(*edit)[0], tune, {{0_tp, length}, {}}, "pickup");
             PsgTempo::applyToEdit({clip.get()}, {&tune}, rows, patterns);
-            expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), (96.0 - 24.0) / 50.0, 1.0e-9);
+            expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), 0.0, 1.0e-9);
+            expectEquals(clip->getLeadInFrames(), 96 - 24);
+            expectWithinAbsoluteError(PsgList::getEditTime(*clip, 24).inSeconds(), 96.0 / 50.0, 1.0e-6, "bar 2");
+            expectWithinAbsoluteError(clip->getPosition().getLength().inSeconds(), (3000.0 + 72.0) / 50.0, 1.0e-6);
         }
 
         beginTest("Too few notes or no grid gives no result");
@@ -608,8 +611,20 @@ public:
             expectWithinAbsoluteError(firstRowTime(*trimmed).inSeconds(), 0.0, 1.0e-6);
 
             auto [audibleEdit, shifted] = import(withLeadIn(makeTune(3000, {6}, 4), 5, true));
-            // 4/4 at 24 frames per beat: a bar is 96 frames, so the clip moves 91 frames right
-            expectWithinAbsoluteError(shifted->getPosition().getStart().inSeconds(), 91.0 / 50.0, 1.0e-9);
+            // 4/4 at 24 frames per beat: a bar is 96 frames, so the clip starts with 91 frames of rests
+            expectWithinAbsoluteError(shifted->getPosition().getStart().inSeconds(), 0.0, 1.0e-9);
+            expectEquals(shifted->getLeadInFrames(), 91);
+            // the rests are the clip's own: they stay when it moves, and its playback starts after them
+            auto played = shifted->createPlaybackMidiSequence(tracktion::MidiList::TimeBase::seconds);
+            double firstNote = -1.0;
+            for (int i = 0; i < played.getNumEvents() && firstNote < 0.0; ++i)
+                if (played.getEventPointer(i)->message.getTimeStamp() > 1.0e-9)
+                    firstNote = played.getEventPointer(i)->message.getTimeStamp();
+            expectWithinAbsoluteError(firstNote, 91.0 / 50.0, 1.0e-6, "nothing plays in the rests");
+            shifted->setStart(tracktion::TimePosition::fromSeconds(4.0), false, true);
+            expectEquals(shifted->getLeadInFrames(), 91, "kept through a move");
+            expectWithinAbsoluteError(firstRowTime(*shifted).inSeconds(), 4.0 + 96.0 / 50.0, 1.0e-6);
+            shifted->setStart(0_tp, false, true);
             expectWithinAbsoluteError(shifted->getPosition().getOffset().inSeconds(), 0.0, 1.0e-9);
             const auto barsBeats = audibleEdit->tempoSequence.toBarsAndBeats(firstRowTime(*shifted));
             expectEquals(barsBeats.bars, 1, "first row starts bar 2");
@@ -650,8 +665,9 @@ public:
             // Each chip plays every third row with noise on, so the meter may well read 3/4.
             const int barFrames = 24 * edit->tempoSequence.getTimeSig(0)->numerator.get();
             for (auto* clip : clips) {
-                // every clip moves alike, so the first row (frame 5) starts bar 2
-                expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), (barFrames - 5) / 50.0, 1.0e-9);
+                // every clip gets the same rests, so the first row (frame 5) starts bar 2
+                expectWithinAbsoluteError(clip->getPosition().getStart().inSeconds(), 0.0, 1.0e-9);
+                expectEquals(clip->getLeadInFrames(), barFrames - 5);
                 expectWithinAbsoluteError(clip->getPosition().getOffset().inSeconds(), 0.0, 1.0e-9);
             }
         }

@@ -263,11 +263,9 @@ Array<PsgClip*> importPsgFiles(te::Edit& edit, const Array<File>& files, te::Tim
     // A tune that loops back past its start loops there; the frames keep their times through the tempo above
     const auto looped = std::find_if(tunes.begin(), tunes.end(), [](const auto& t) { return t.loopFrame > 0; });
     if (looped != tunes.end()) {
-        const auto position = clips.getFirst()->getPosition();
-        const auto loopStart = position.getStartOfSource()
-                               + te::TimeDuration::fromSeconds((double) looped->loopFrame
-                                                               / looped->chips.front().psg.getFrameRate());
-        edit.getTransport().setLoopRange({loopStart, position.getEnd()});
+        auto& first = *clips.getFirst();
+        const auto loopStart = PsgList::getEditTime(first, (int) looped->loopFrame);  // wherever the clip put it
+        edit.getTransport().setLoopRange({loopStart, first.getPosition().getEnd()});
     }
     return clips;
 }

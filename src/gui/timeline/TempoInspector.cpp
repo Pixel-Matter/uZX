@@ -848,12 +848,14 @@ private:
     // ponytail: the transport's position, not the latency-aware playhead the timeline draws: a frame late at most
     tracktion::TimePosition timeOf(const PsgClip& clip, int frame) const {
         const auto position = clip.getPosition();
-        return position.getStart() + tracktion::TimeDuration::fromSeconds(frame / in.fps) - position.getOffset();
+        return position.getStart() + tracktion::TimeDuration::fromSeconds((frame + clip.getLeadInFrames()) / in.fps)
+               - position.getOffset();
     }
 
     int frameAt(const PsgClip& clip, tracktion::TimePosition time) const {
         const auto position = clip.getPosition();
-        return (int) std::floor((time - position.getStart() + position.getOffset()).inSeconds() * in.fps);
+        return (int) std::floor((time - position.getStart() + position.getOffset()).inSeconds() * in.fps)
+               - clip.getLeadInFrames();
     }
 
     /** The grid map and the phase map share their place: the switch shows one. */

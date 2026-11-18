@@ -1124,9 +1124,13 @@ void applyToEdit(const juce::Array<PsgClip*>& clips,
             position.offset = position.offset + lead;
             clip->setPosition(position);
         } else {
+            // The clip stays on its bar line and grows by the rests that come before the lead-in
             const int barFrames = result->framesPerBeat * timeSig.numerator.get();
             const int shift = barFrames - result->firstRowFrame % barFrames;
-            clip->setStart(position.getStart() + tracktion::TimeDuration::fromSeconds(shift / fps), false, true);
+            const auto rests = tracktion::TimeDuration::fromSeconds(shift / fps);
+            clip->setLeadInFrames(juce::roundToInt(rests.inSeconds() * clip->getPsg().getEffectiveFps(*clip)),
+                                  &edit.getUndoManager());
+            clip->setLength(position.getLength() + rests, false);
         }
     }
 }

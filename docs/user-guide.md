@@ -44,7 +44,7 @@ Until a tune is open, the window says how to open one, and while a file it can o
 - On Windows and Linux the Player registers no file types: choose it in the file manager's **Open with**, which passes the file on the command line.
 - Pass one or more file paths as command-line arguments. A file that isn't there, or isn't one the Player opens, is named in a message; the rest open.
 
-Drop or open several `.psg` files at once, or select them in Finder and open them, to play them together, each on its own track with its own AY chip, as a Turbo Sound tune has one file per chip. The chips' sound adds up, so each starts lower, at **Volume** −6 dB for two chips and −9.5 dB for three, and together they are no louder than one chip alone (a tracker module of several chips does the same). They replace the open edit, which is named after the start their names share: `song_1.psg` and `song_2.psg` open as `song`.
+Drop or open several `.psg` files at once, or select them in Finder and open them, to play them together, each on its own track with its own AY chip, as a Turbo Sound tune has one file per chip. The chips' sound adds up, so each starts lower, at **Volume** −6 dB for two chips and −9.5 dB for three, and together they are no louder than one chip alone (a tracker module of several chips does the same). They replace the open project, which is named after the start their names share: `song_1.psg` and `song_2.psg` open as `song`.
 
 A PSG file plays at 50 frames a second, or at the rate its header gives when the file is version 10 or later. The project takes the frame rate of the file opened last. Most files don't say their rate, so a tune written for 100 or 200 Hz opens two or four times too slow: pick its rate under **fps** in the transport bar, or under **Frame Rate** in the clip's right-click menu. The clips play at the new rate. When they are the only clips in the project, the whole timeline scales: the clips start as many frames in, and the tempo scales with the rate, so a beat keeps its frames and the grid its groove, and a module's own row timing is kept: 41 BPM at 50 Hz becomes 164 BPM at 200 Hz. Past 300 BPM, the most the tempo goes to, a beat takes twice the frames. Otherwise the clips keep where they start and the tempo stays.
 
@@ -402,7 +402,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Z` | Zoom to selection | Studio |
 | `Cmd+O` | Open file | Player, Studio |
 | `Cmd+I` | Import PSG files, TAYM files or tracker modules: one goes on the selected track, several on new tracks | Studio |
-| `Cmd+N` | New edit | Studio |
+| `Cmd+N` | New project | Studio |
 | `Cmd+S` | Save | Player, Studio |
 | `Cmd+Shift+S` | Save As | Player, Studio |
 | `Cmd+Z` / `Cmd+Shift+Z` | Undo / Redo, such as AY chip settings or a clip's tuning; `Ctrl+Y` also redoes on Windows and Linux | Player, Studio |
@@ -460,7 +460,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `.psg` | Raw PSG register dump — standard format for AY chip music |
 | `.taym` | TAYM: an AY tune's frames with timer effects (PWM, sync-buzzer, samples), opened as a PSG clip that plays them (see [Opening Files](#opening-files)) |
 | `.pt3`, `.pt2`, `.pt1`, `.vt2`, `.txt`, `.stc`, `.st1`, `.st3`, `.stp`, `.asc`, `.as0`, `.sqt`, `.psc`, `.psm`, `.gtr`, `.ftc` | ZX Spectrum tracker modules, opened and imported as PSG register dumps with their title, note table and rows (see [Opening Files](#opening-files)) |
-| `.uzx` | µZX project format — timeline edit with multiple tracks and metadata. A project saved by a newer µZX doesn't open in an older one: it says so and leaves the file untouched |
+| `.uzx` | µZX project format — a timeline with its tracks, clips and settings. A project saved by a newer µZX doesn't open in an older one: it says so and leaves the file untouched |
 
 ---
 

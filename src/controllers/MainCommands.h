@@ -244,12 +244,12 @@ public:
         switch (commandID) {
             // File commands
             case fileNew:
-                result.setInfo("New", "Create a new edit", "File", 0);
+                result.setInfo("New", "Create a new project", "File", 0);
                 result.addDefaultKeypress('n', ModifierKeys::commandModifier);
                 break;
 
             case fileOpen:
-                result.setInfo("Open...", "Open an existing edit", "File", 0);
+                result.setInfo("Open...", "Open an existing project", "File", 0);
                 result.addDefaultKeypress('o', ModifierKeys::commandModifier);
                 break;
 
@@ -290,22 +290,22 @@ public:
                 break;
 
             case fileSave:
-                result.setInfo("Save", "Save the current edit", "File", 0);
+                result.setInfo("Save", "Save the current project", "File", 0);
                 result.addDefaultKeypress('s', ModifierKeys::commandModifier);
                 break;
 
             case fileSaveAs:
-                result.setInfo("Save As...", "Save the current edit with a new name", "File", 0);
+                result.setInfo("Save As...", "Save the current project with a new name", "File", 0);
                 result.addDefaultKeypress('s', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
                 break;
 
             case fileReveal:
                #if JUCE_MAC
-                result.setInfo("Reveal in Finder", "Reveal the current edit in Finder", "File", 0);
+                result.setInfo("Reveal in Finder", "Reveal the current project in Finder", "File", 0);
                #elif JUCE_WINDOWS
-                result.setInfo("Show in Explorer", "Show the current edit in Explorer", "File", 0);
+                result.setInfo("Show in Explorer", "Show the current project in Explorer", "File", 0);
                #else
-                result.setInfo("Show in Folder", "Show the folder of the current edit", "File", 0);
+                result.setInfo("Show in Folder", "Show the folder of the current project", "File", 0);
                #endif
                 break;
 

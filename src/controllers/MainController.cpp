@@ -184,10 +184,13 @@ void AppController::ensureMinimumSampleRate() {
     auto& deviceManager = engine_.getDeviceManager().deviceManager;
     auto* currentDevice = deviceManager.getCurrentAudioDevice();
 
-    bool audioOk = false;
+    String problem = "No audio output device is selected.";
 
     if (currentDevice != nullptr) {
         auto currentSampleRate = currentDevice->getCurrentSampleRate();
+        problem = "The audio device \"" + currentDevice->getName() + "\" runs at "
+                  + String(roundToInt(currentSampleRate)) + " Hz. Choose a sample rate of "
+                  + String(roundToInt(MIN_SAMPLE_RATE)) + " Hz or more.";
         if (currentSampleRate < MIN_SAMPLE_RATE) {
             const auto currentBufferSize = currentDevice->getCurrentBufferSizeSamples();
             DBG("WARNING: Sample rate " << currentSampleRate << " Hz is below minimum " << MIN_SAMPLE_RATE << " Hz"
@@ -219,14 +222,11 @@ void AppController::ensureMinimumSampleRate() {
             const auto newBufferSize = currentDevice->getCurrentBufferSizeSamples();
             DBG("  New buffer size: " << newBufferSize);
         } else {
-            audioOk = true;
+            problem = {};
         }
     }
-    if (!audioOk) {
-        MessageManager::callAsync([] {
-            te::AppFunctions::showSettingsScreen();
-        });
-    }
+    if (problem.isNotEmpty())  // said, so the settings that open on their own don't puzzle
+        MessageManager::callAsync([this, problem] { reportAudioDeviceProblem(problem); });
 }
 
 String AppController::getAudioDeviceError(bool requireRunning) const {

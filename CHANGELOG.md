@@ -4,6 +4,9 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Audio settings
+- Without a working audio device at startup, a message says what is wrong and offers **Open Audio Settings**, where the settings opened on their own without a word
+
 ### Opening files
 - Fixed: Studio, the app for `.uzx` files, opened on its last project when a project was opened from Finder or passed on the command line
 - Player: with no tune open, the window says how to open one, where it showed an empty grid and the colour legend; a file dragged over the window outlines it

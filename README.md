@@ -6,6 +6,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/Pixel-Matter/uZX/releases)
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-00599C?logo=cplusplus)](https://en.cppreference.com/w/cpp/23)
 [![Built with JUCE](https://img.shields.io/badge/built%20with-JUCE-8DC63F)](https://juce.com/)
+[![Powered by Tracktion Engine](https://img.shields.io/badge/powered%20by-Tracktion%20Engine-00A9FF)](https://github.com/Tracktion/tracktion_engine/)
 
 A player for AY-3-8910 / YM2149 chip music — ZX Spectrum, Amstrad CPC, MSX, Atari ST — that shows what the chip plays: each channel's notes, envelope and noise on a timeline, and a scope for each channel. macOS is the supported platform; the Windows and Linux builds are previews, unsigned and less tested.
 
@@ -66,11 +67,6 @@ Take the newest [Player release](https://github.com/Pixel-Matter/uZX/releases?q=
 
 Open the `.dmg` and drag the app to **Applications**. The app isn't notarized by Apple, so the first launch needs **Open Anyway** in System Settings → Privacy & Security; see [Installing on macOS](docs/user-guide.md#installing-on-macos).
 
-### Known Issues
-
-- **macOS: playback scrolling drops some frames on a MacBook Pro's built-in display.** On that XDR panel, at a fixed 50 Hz, about one frame in 25 reaches the screen a refresh late, so scrolling hitches now and then. Drawing a frame there takes about 10 ms, half of it macOS checking the picture for HDR content, which leaves little room before the screen's deadline. An external display is not affected. Before macOS 14 the timeline can also drop frames on other displays and in Viz mode, because there μZX can't time its frames to the screen.
-- **macOS: with two displays on, playback scrolling stutters in waves.** When the displays refresh at slightly different rates, such as an external display at 59.95 Hz beside a MacBook's panel at 60 Hz, macOS shows some frames a refresh late for a few seconds every 20 seconds or so. μZX hands every frame over on time; the stutter comes from macOS. Using a single display, for example a MacBook with its lid closed, avoids it.
-
 ### Tunes at 100 or 200 Hz
 
 Most `.psg` files don't record the frame rate they were written for, so μZX opens them at 50 Hz, and a tune made for 100 or 200 Hz (Atari, multi-speed players) plays two or four times too slowly. To play it at its rate:
@@ -107,6 +103,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, prerequi
 - [Design notes](docs/README.md) — tuning, PSG timing, parameter binding, and the index of all docs
 - [Vision](docs/motool/vision.md) — the initial MoTool vision and long-term direction
 
+## Known Issues
+
+- **macOS: playback scrolling drops some frames on a MacBook Pro's built-in display.** On that XDR panel, at a fixed 50 Hz, about one frame in 25 reaches the screen a refresh late, so scrolling hitches now and then. Drawing a frame there takes about 10 ms, half of it macOS checking the picture for HDR content, which leaves little room before the screen's deadline. An external display is not affected. Before macOS 14 the timeline can also drop frames on other displays and in Viz mode, because there μZX can't time its frames to the screen.
+- **macOS: with two displays on, playback scrolling stutters in waves.** When the displays refresh at slightly different rates, such as an external display at 59.95 Hz beside a MacBook's panel at 60 Hz, macOS shows some frames a refresh late for a few seconds every 20 seconds or so. μZX hands every frame over on time; the stutter comes from macOS. Using a single display, for example a MacBook with its lid closed, avoids it.
+
 ## Community
 
 Join the [μZX Discord](https://discord.com/channels/1103598609804562463/1357634772666552340) for support, discussion, and to connect with other users.
@@ -125,7 +126,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for build setu
 
 Greets to diver, spke, n1k-o, bfox, wbcbz7, Pator, Megus, Volutar and all ZX Spectrum musicians and demosceners!
 
-![Powered by Tracktion Engine](https://raw.githubusercontent.com/Tracktion/tracktion_engine/develop/tutorials/images/tracktion_engine_powered.png)
+<img src="https://raw.githubusercontent.com/Tracktion/tracktion_engine/develop/tutorials/images/tracktion_engine_powered.png" alt="Powered by Tracktion Engine" width="113">
 
 ## About
 

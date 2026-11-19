@@ -22,7 +22,7 @@ class GuideIllustrationsTest(unittest.TestCase):
         original = guide.GUIDE.read_text()
         first = guide.update_guide(original)
         self.assertEqual(first, guide.update_guide(first))
-        self.assertIn("![µZX Player](uzx-player.gif)", first)
+        self.assertIn("![μZX Player](uzx-player.gif)", first)
         self.assertIn("## File Formats", first)
         for name in guide.FIGURES:
             self.assertEqual(first.count(f"](images/user-guide/{name}.png)"), 1)

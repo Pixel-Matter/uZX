@@ -1,6 +1,6 @@
-# µZX User Guide
+# μZX User Guide
 
-µZX is a suite of applications for working with PSG chip music (AY-3-8910 / YM2149), targeting ZX Spectrum demoscene production.
+μZX is a suite of applications for working with PSG chip music (AY-3-8910 / YM2149), targeting ZX Spectrum demoscene production.
 
 The screenshots show the macOS build using the [Guide demo project](../tests/fixtures/Guide%20demo.uzx).
 
@@ -10,9 +10,9 @@ The screenshots show the macOS build using the [Guide demo project](../tests/fix
 
 | App | Description |
 |-----|-------------|
-| **µZX Studio** | Full-featured PSG music editor with timeline, instruments, and automation (Work in progress) |
-| **µZX Player** | Lightweight player with visualization for `.psg` files, `.taym` files, tracker modules (`.pt3`, `.stc`, …) and `.uzx` files |
-| **µZX Tuning** | Tuning table (note table) editor/viewer. Supports equal temperament and just-intonation |
+| **μZX Studio** | Full-featured PSG music editor with timeline, instruments, and automation (Work in progress) |
+| **μZX Player** | Lightweight player with visualization for `.psg` files, `.taym` files, tracker modules (`.pt3`, `.stc`, …) and `.uzx` files |
+| **μZX Tuning** | Tuning table (note table) editor/viewer. Supports equal temperament and just-intonation |
 
 ### Installing on macOS
 
@@ -36,11 +36,11 @@ Unpack the `.tar.gz` and run `./install.sh` in the folder it makes. It copies th
 
 ---
 
-## µZX Player
+## μZX Player
 
 A minimal player for listening to PSG chip music files.
 
-![µZX Player](uzx-player.gif)
+![μZX Player](uzx-player.gif)
 
 ### Quick Start
 
@@ -54,7 +54,7 @@ Until a tune is open, the window says how to open one and the transport bar show
 
 - **Drag and drop** a `.psg` file, a `.taym` file, a tracker module or a `.uzx` file onto the window.
 - **File menu → Open** (`Cmd+O` / `Ctrl+O`).
-- **Double-click** a file in Finder (macOS). µZX Player is the default app for `.psg` and `.taym` files and tracker modules. `.uzx` files open in it when no other app claims them, such as µZX Studio, which opens them when it is installed. When another app already opens a file type, such as a zxtune player for modules, Finder may keep it; to pick the Player, use **Open With**, or **Get Info → Open with → Change All…** for every file of that type. Early Vortex Tracker's `.txt` modules are not registered.
+- **Double-click** a file in Finder (macOS). μZX Player is the default app for `.psg` and `.taym` files and tracker modules. `.uzx` files open in it when no other app claims them, such as μZX Studio, which opens them when it is installed. When another app already opens a file type, such as a zxtune player for modules, Finder may keep it; to pick the Player, use **Open With**, or **Get Info → Open with → Change All…** for every file of that type. Early Vortex Tracker's `.txt` modules are not registered.
 - On Windows and Linux the Player registers no file types: choose it in the file manager's **Open with**, which passes the file on the command line. While the Player runs, Windows opens the file in it; Linux opens a new Player window for it.
 - Pass one or more file paths as command-line arguments. A file that isn't there, or isn't one the Player opens, is named in a message; the rest open.
 
@@ -64,7 +64,7 @@ A PSG file plays at 50 frames a second, or at the rate its header gives when the
 
 **Tracker modules and TAYM files** open like PSG files, each chip on its own track; what they bring that a PSG file lacks, such as a note table, the rows' tempo, a loop and, in a TAYM, timer effects, is under [Tracker Modules](#tracker-modules) and [TAYM Files](#taym-files).
 
-**Turbo Sound sets.** When a single `.psg` file's name ends in a chip number 1 to 3 after `_`, `-`, `.` or a space (`song_1.psg`, or `song.1.psg` as Vortex Tracker exports them), and files with the other numbers lie next to it with as many frames (give or take one, where the recording stopped mid-frame) and the same PSG header, µZX asks whether to open the whole set or only that file. This applies however a single file comes in: opening, dropping, Finder / Explorer, and Studio's **Import PSG**.
+**Turbo Sound sets.** When a single `.psg` file's name ends in a chip number 1 to 3 after `_`, `-`, `.` or a space (`song_1.psg`, or `song.1.psg` as Vortex Tracker exports them), and files with the other numbers lie next to it with as many frames (give or take one, where the recording stopped mid-frame) and the same PSG header, μZX asks whether to open the whole set or only that file. This applies however a single file comes in: opening, dropping, Finder / Explorer, and Studio's **Import PSG**.
 
 ### Saving
 
@@ -131,22 +131,22 @@ Each chip has a row of its own, in track order, and two keys arrange the rows:
 - `V` switches what each row shows: **Notes and Scopes**, then **Notes** alone across the whole row, then **Scopes** alone across the whole row.
 - `S` switches how a chip's A, B and C scopes are tiled: **Stacked**, A over B over C, in a column at the right of the notes; or **Side by Side**, A | B | C, in a band under the notes, whose gap above you drag to make the band taller or shorter. With the scopes alone, Stacked lists every channel down the screen and Side by Side makes a grid, a chip per row. `S` does nothing while the notes are shown alone.
 
-For a moment after you enter Viz mode or press either key, the top of the screen shows both choices, each with the current one lit, and the key to leave. **View → Viz Options** picks a layout and a tiling directly, and a colour scheme: **Slate**, as above, or **Classic Black and White**, black throughout with white scopes and thin grey lines between them; the notes keep their A, B and C colours. **Note Decorations**, the noise band, the envelope's stripes on its notes and a tick where a frame restarts it, by writing its shape, the same one too, the markers of an envelope too low to show as a note, and a timer effect's edges, pulse fill and start tick, are drawn **Auto**, as on the timeline, once a frame is 3 pixels wide, or **Always**, at any zoom. µZX remembers these options, and **File → Render Video...** draws them too.
+For a moment after you enter Viz mode or press either key, the top of the screen shows both choices, each with the current one lit, and the key to leave. **View → Viz Options** picks a layout and a tiling directly, and a colour scheme: **Slate**, as above, or **Classic Black and White**, black throughout with white scopes and thin grey lines between them; the notes keep their A, B and C colours. **Note Decorations**, the noise band, the envelope's stripes on its notes and a tick where a frame restarts it, by writing its shape, the same one too, the markers of an envelope too low to show as a note, and a timer effect's edges, pulse fill and start tick, are drawn **Auto**, as on the timeline, once a frame is 3 pixels wide, or **Always**, at any zoom. μZX remembers these options, and **File → Render Video...** draws them too.
 
 ### Rendering a Video
 
-**File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes or what **View → Viz Options** chooses, and the view follows the playhead from the start of the tune to 3 seconds after its end. **Loops** in the dialog plays the loop range on the ruler that many more times: up to the end of the loop, the loop again, then on to the end of the tune and the 3 seconds; it is 0, no repeats, each time the dialog opens. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, µZX offers to show the file. The sound is the tune without the master volume: that knob doesn't change it.
+**File → Render Video...** renders the tune as a video, for YouTube and the like. Each frame shows what Viz mode shows, each track's notes and its chip's A, B and C scopes or what **View → Viz Options** chooses, and the view follows the playhead from the start of the tune to 3 seconds after its end. **Loops** in the dialog plays the loop range on the ruler that many more times: up to the end of the loop, the loop again, then on to the end of the tune and the 3 seconds; it is 0, no repeats, each time the dialog opens. The render runs faster than real time, with a progress bar and **Cancel**; when it is done, μZX offers to show the file. The sound is the tune without the master volume: that knob doesn't change it.
 
 - **Show**, **Scopes**, **Colours** and **Decorations** are Viz mode's options, as in **View → Viz Options**: notes and scopes, notes or scopes; the scopes stacked or side by side; Slate or Classic Black and White; the notes' decorations Auto, once a frame is 3 pixels wide, or Always, which keeps them in a video zoomed out to beats or bars. Changing them here changes Viz mode too; in the Player, the view behind the dialog shows each choice.
 - **Zoom** is the timeline zoom of the video: **As on screen**, the zoom of the view you see, or **Frames**, **Groove Rows**, **Beats** or **Bars**, the **View → Zoom** levels, which give one frame, beat or bar 16 pixels of the **Render** size, and a row 32, using the tempo and meter at the start of the tune.
-- **ffmpeg** encodes the video. µZX looks for it on the `PATH`, and on macOS and Linux in `/opt/homebrew/bin`, `/usr/local/bin` and `/usr/bin` too. If it isn't found, install it: `brew install ffmpeg` on macOS; `winget install Gyan.FFmpeg` on Windows, then start µZX again, as it reads the `PATH` when it starts; `sudo apt install ffmpeg` on Debian or Ubuntu. Or download it from [ffmpeg.org](https://ffmpeg.org/download.html), or click **Choose...** to point to it.
+- **ffmpeg** encodes the video. μZX looks for it on the `PATH`, and on macOS and Linux in `/opt/homebrew/bin`, `/usr/local/bin` and `/usr/bin` too. If it isn't found, install it: `brew install ffmpeg` on macOS; `winget install Gyan.FFmpeg` on Windows, then start μZX again, as it reads the `PATH` when it starts; `sudo apt install ffmpeg` on Debian or Ubuntu. Or download it from [ffmpeg.org](https://ffmpeg.org/download.html), or click **Choose...** to point to it.
 - **Render** is the size the frames are drawn at, from 1280 × 720 to 3840 × 2160: the notes, scopes and labels are laid out as in a window that size. **Output** scales the frames up by a whole number, up to 8K, each drawn pixel becoming a sharp square block: 1280 × 720 at ×3 makes a 4K video of a 720p view.
 - **Frame rate**: 60, 50, 48, 30, 25 or 24 fps. At 60 the notes scroll most smoothly on most screens.
 - **Video**: H.264 plays everywhere; HEVC (H.265) and AV1 make smaller files, for 4K and 8K. **Quality** is High, Very high or Near lossless. A codec your ffmpeg can't encode is greyed out.
 - **Audio**: AAC 384 kbps, Opus 256 kbps or ALAC (lossless), 48 kHz stereo. **Normalize audio**, on unless you turn it off, scales the whole sound so its loudest peak is 1 dB below full scale: a tune that would clip comes down, a quiet one comes up, and the chips' **Volume** knobs then set only their balance. Off, the sound is as the chips play it, and anything over full scale clips.
 - **Render...** asks where to save the `.mp4` file.
 
-µZX remembers these settings, and the folder, for the next render.
+μZX remembers these settings, and the folder, for the next render.
 
 ### AY Chip and Level Meter
 
@@ -179,7 +179,7 @@ Chip type and clock, stereo controls, the three channel strips, and the track's 
 
 ---
 
-## µZX Studio
+## μZX Studio
 
 A DAW-style editor for composing PSG chip music.
 
@@ -193,7 +193,7 @@ Track headers are on the left, clips above, and the selected clip's parameter ed
 
 ### Transport Bar
 
-Same controls as µZX Player, plus:
+Same controls as μZX Player, plus:
 
 | Control | Description |
 |---------|-------------|
@@ -231,7 +231,7 @@ Along the top of each clip runs its **header**, in the clip's colour. A selected
 
 See [Reading PSG clips](psg-visualization.md) for an illustrated reference to tone, envelope, noise, channel ownership, and matching pitches.
 
-**Tuning table and key.** When a PSG file is imported, µZX detects which tuning table the tracker used (ProTracker and Vortex Tracker tables, including the earlier versions of ProTracker tables #0 and #2 that PT 3.3 and older play; when none fits, a tuning fitted to the tune: equal temperament, or a just intonation on a tonic when that fits clearly better) and the key of the tune. A tracker module names its table, so nothing is detected: when µZX has that table, it is set on the clip as if picked in **Tuning and key…**, and only the key is detected on it. µZX has the tables of Pro Tracker 2 and 3 (#0 to #3, with the PT 3.3 versions of #0 and #2), Vortex Tracker's #4 and Sound Tracker's own (`ST`, used by `.stc` and `.stp`, which Pro Tracker's #1 copies with two notes changed); for other trackers' tables, such as ASC Sound Master's, the table is detected as for a PSG file. Detection never picks `ST`: from the notes alone it can rarely be told from PT #1, so it names PT #1. The clip header shows both, for example `PT #1  E minor`; a clip with no audible notes shows neither. Register values only fix the ratio of chip clock to pitch, so a fitted tuning names the clock too when the ZX Spectrum 128 or Pentagon clock brings A4 within a few cents of 440 Hz, for example `12TET 440 Hz Pentagon` or `5LJI E 440 Hz Pentagon`; the clock also decides the note names. The Atari ST and Amstrad clocks are never guessed, since a ZX table two semitones low looks like 440 Hz on the Atari ST; choose them in **Tuning and key…**. Otherwise A4 is given at the ZX Spectrum clock, for example `12TET 436 Hz`. When the Player opens a PSG file, from **Open** or from Finder or Explorer, its AY chip plays at that clock, so a tune detected as `12TET 440 Hz Pentagon` plays at 1.75 MHz; a tune on a tracker table keeps the default clock. A TAYM file states its chip's clock, so its fitted tuning is named at that clock instead of a guessed one, for example `12TET 440 Hz Atari ST`, and the Player plays it there. If the track's AY chip then runs at another clock than the fitted tuning's, the header shows a warning such as `⚠ Pentagon @ ZX Spectrum +23¢`: the tune was written for a Pentagon, the chip plays it at the ZX Spectrum clock, and every note sounds 23 cents higher than its name. Set the chip's clock in the AY panel, or the tuning's in **Tuning and key…**, to make them agree. In the Notes view, the table's notes become piano-roll lanes: a line between neighbouring notes, so each note sits inside its lane, in the colour of the timeline's finest grid lines, a brighter line below each C to mark the octaves, and the tonic's lane filled in the lines' colour. The timeline grid runs under the notes, and where its beat and bar lines cross the lanes the brighter line shows. Note names appear inside the lanes when the clip is tall enough; in a shorter clip only the tonic of each octave is named and only the octave lines are drawn, and in a very short clip the lanes disappear. Notes are drawn where the chip plays them and never snapped to a lane, so drift, bends and portamento stay visible. Turn the lanes off or on with **View → Note Lanes** or **Note Lanes** in the clip's right-click menu. **Piano Keys**, in the same two menus, adds a short piano keyboard over the lanes at the left edge of the view, one key per lane, so the groups of two and three black keys show where C is; the notes of the tune's key (C major when the clip has no key) are named on their keys, a black key's name at its left end and a white key's right of the black keys; a clip too short to name every lane leaves the keys unnamed. When the keys are too short to tell apart, the keyboard is hidden and only the lanes remain. Both choices apply to every clip and are remembered across files.
+**Tuning table and key.** When a PSG file is imported, μZX detects which tuning table the tracker used (ProTracker and Vortex Tracker tables, including the earlier versions of ProTracker tables #0 and #2 that PT 3.3 and older play; when none fits, a tuning fitted to the tune: equal temperament, or a just intonation on a tonic when that fits clearly better) and the key of the tune. A tracker module names its table, so nothing is detected: when μZX has that table, it is set on the clip as if picked in **Tuning and key…**, and only the key is detected on it. μZX has the tables of Pro Tracker 2 and 3 (#0 to #3, with the PT 3.3 versions of #0 and #2), Vortex Tracker's #4 and Sound Tracker's own (`ST`, used by `.stc` and `.stp`, which Pro Tracker's #1 copies with two notes changed); for other trackers' tables, such as ASC Sound Master's, the table is detected as for a PSG file. Detection never picks `ST`: from the notes alone it can rarely be told from PT #1, so it names PT #1. The clip header shows both, for example `PT #1  E minor`; a clip with no audible notes shows neither. Register values only fix the ratio of chip clock to pitch, so a fitted tuning names the clock too when the ZX Spectrum 128 or Pentagon clock brings A4 within a few cents of 440 Hz, for example `12TET 440 Hz Pentagon` or `5LJI E 440 Hz Pentagon`; the clock also decides the note names. The Atari ST and Amstrad clocks are never guessed, since a ZX table two semitones low looks like 440 Hz on the Atari ST; choose them in **Tuning and key…**. Otherwise A4 is given at the ZX Spectrum clock, for example `12TET 436 Hz`. When the Player opens a PSG file, from **Open** or from Finder or Explorer, its AY chip plays at that clock, so a tune detected as `12TET 440 Hz Pentagon` plays at 1.75 MHz; a tune on a tracker table keeps the default clock. A TAYM file states its chip's clock, so its fitted tuning is named at that clock instead of a guessed one, for example `12TET 440 Hz Atari ST`, and the Player plays it there. If the track's AY chip then runs at another clock than the fitted tuning's, the header shows a warning such as `⚠ Pentagon @ ZX Spectrum +23¢`: the tune was written for a Pentagon, the chip plays it at the ZX Spectrum clock, and every note sounds 23 cents higher than its name. Set the chip's clock in the AY panel, or the tuning's in **Tuning and key…**, to make them agree. In the Notes view, the table's notes become piano-roll lanes: a line between neighbouring notes, so each note sits inside its lane, in the colour of the timeline's finest grid lines, a brighter line below each C to mark the octaves, and the tonic's lane filled in the lines' colour. The timeline grid runs under the notes, and where its beat and bar lines cross the lanes the brighter line shows. Note names appear inside the lanes when the clip is tall enough; in a shorter clip only the tonic of each octave is named and only the octave lines are drawn, and in a very short clip the lanes disappear. Notes are drawn where the chip plays them and never snapped to a lane, so drift, bends and portamento stay visible. Turn the lanes off or on with **View → Note Lanes** or **Note Lanes** in the clip's right-click menu. **Piano Keys**, in the same two menus, adds a short piano keyboard over the lanes at the left edge of the view, one key per lane, so the groups of two and three black keys show where C is; the notes of the tune's key (C major when the clip has no key) are named on their keys, a black key's name at its left end and a white key's right of the black keys; a clip too short to name every lane leaves the keys unnamed. When the keys are too short to tell apart, the keyboard is hidden and only the lanes remain. Both choices apply to every clip and are remembered across files.
 
 A `?` after the label means the detection was a close call. Right-click the clip and choose **Tuning and Key…** to see the ranked tracker tables, then the fitted tunings (12TET, 5-limit and Pythagorean just intonations, each with its tonic and A4), and the keys, all with their scores, and the clip's pitch classes at sub-semitone resolution on the selected grid: a wrong grid shows as peaks between the lines, and the key's own pitch classes have brighter lines and labels than the others. For a fitted tuning, **Chip clock** chooses the machine the tune was written for and shows the A4 that gives: the score stays the same, but the notes are named for that clock. It is unavailable for tracker tables, which play the same register values on any clock. Picking a tuning, clock or key stores the choice with the clip; **Use detected** removes it. Files imported together, such as the chips of a Turbo Sound tune, are one tune: their tuning and key are detected from all of them, and a choice on one clip applies to all. Unless you picked a key yourself, the key is worked out again on the table you pick, since another table can name every note differently. The window follows the clip as you edit it and closes when the clip is deleted or another file is opened. ProTracker tables #0 and #3 differ only by a semitone, so a tune written for #0 is shown on #3 with every note named a semitone higher; pick the table to correct it.
 
@@ -317,7 +317,7 @@ Selecting the track reveals its devices, including the AY chip emulator.
 
 ---
 
-## µZX Tuning
+## μZX Tuning
 
 A standalone editor for generating and previewing AY chip tuning tables.
 
@@ -475,19 +475,19 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `.psg` | Raw PSG register dump — standard format for AY chip music |
 | `.taym` | TAYM: an AY tune's frames with timer effects (PWM, sync-buzzer, samples), opened as a PSG clip that plays them (see [TAYM Files](#taym-files)) |
 | `.pt3`, `.pt2`, `.pt1`, `.vt2`, `.txt`, `.stc`, `.st1`, `.st3`, `.stp`, `.asc`, `.as0`, `.sqt`, `.psc`, `.psm`, `.gtr`, `.ftc` | ZX Spectrum tracker modules, opened and imported as PSG register dumps with their title, note table and rows (see [Tracker Modules](#tracker-modules)) |
-| `.uzx` | µZX project format — a timeline with its tracks, clips and settings. A project saved by a newer µZX doesn't open in an older one: it says so and leaves the file untouched |
+| `.uzx` | μZX project format — a timeline with its tracks, clips and settings. A project saved by a newer μZX doesn't open in an older one: it says so and leaves the file untouched |
 
 ### Tracker Modules
 
-µZX opens ZX Spectrum tracker modules as well: Pro Tracker 1, 2 and 3 (`.pt1`, `.pt2`, `.pt3`, Turbo Sound PT3 files included), Vortex Tracker II text modules (`.vt2`, or `.txt` from its early versions; Turbo Sound files included), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro (`.stp`), ASC Sound Master (`.asc`, `.as0`), SQ-Tracker (`.sqt`), Pro Sound Creator (`.psc`), Pro Sound Maker (`.psm`), Global Tracker (`.gtr`) and Fast Tracker (`.ftc`). The format is recognised from the file's content.
+μZX opens ZX Spectrum tracker modules as well: Pro Tracker 1, 2 and 3 (`.pt1`, `.pt2`, `.pt3`, Turbo Sound PT3 files included), Vortex Tracker II text modules (`.vt2`, or `.txt` from its early versions; Turbo Sound files included), Sound Tracker (`.stc`, `.st1`, `.st3`), Sound Tracker Pro (`.stp`), ASC Sound Master (`.asc`, `.as0`), SQ-Tracker (`.sqt`), Pro Sound Creator (`.psc`), Pro Sound Maker (`.psm`), Global Tracker (`.gtr`) and Fast Tracker (`.ftc`). The format is recognised from the file's content.
 
-µZX plays the module with [zxtune](https://github.com/vitamin-caig/zxtune)'s players up to where the tune loops and opens the result like a PSG file: each AY chip on its own track, two or three for Turbo Sound, named after the module's title, or after the file when the module has none.
+μZX plays the module with [zxtune](https://github.com/vitamin-caig/zxtune)'s players up to where the tune loops and opens the result like a PSG file: each AY chip on its own track, two or three for Turbo Sound, named after the module's title, or after the file when the module has none.
 
-The module also brings what a PSG file lacks: its note table becomes the tune's tuning table when µZX has that table (see **Tuning table and key** under µZX Studio's Timeline), and its rows set the tempo (see the BPM control under [Transport Bar](#transport-bar)). A module that loops back past its start, after an intro, sets the loop range from its loop to its end (see **Loop range** under [Timeline](#timeline)). A Vortex Tracker module also brings the chip clock and the frame rate it was written for, such as a Pentagon's 1.75 MHz and 48.828 Hz; the clock is set on the tracks the module gets to itself, and the frame rate on the project. Other tracker modules store neither, and none stores the chip type or stereo layout, so those stay as they are.
+The module also brings what a PSG file lacks: its note table becomes the tune's tuning table when μZX has that table (see **Tuning table and key** under μZX Studio's Timeline), and its rows set the tempo (see the BPM control under [Transport Bar](#transport-bar)). A module that loops back past its start, after an intro, sets the loop range from its loop to its end (see **Loop range** under [Timeline](#timeline)). A Vortex Tracker module also brings the chip clock and the frame rate it was written for, such as a Pentagon's 1.75 MHz and 48.828 Hz; the clock is set on the tracks the module gets to itself, and the frame rate on the project. Other tracker modules store neither, and none stores the chip type or stereo layout, so those stay as they are.
 
 ### TAYM Files
 
-µZX opens `.taym` files: [TAYM](https://github.com/ruguevara/taym) is an interchange format for AY music with timer effects, exported by trackers such as Bitphase. A timer effect writes chip registers many times within a frame, which makes sounds a PSG file cannot hold: pulse-width modulation, sync-buzzer, samples. A TAYM opens like a PSG file, each AY chip on its own track named after the tune's title, and its timer effects play with it, each write at its own sample.
+μZX opens `.taym` files: [TAYM](https://github.com/ruguevara/taym) is an interchange format for AY music with timer effects, exported by trackers such as Bitphase. A timer effect writes chip registers many times within a frame, which makes sounds a PSG file cannot hold: pulse-width modulation, sync-buzzer, samples. A TAYM opens like a PSG file, each AY chip on its own track named after the tune's title, and its timer effects play with it, each write at its own sample.
 
 The clip draws each timer effect as a note at the pitch of what the timer writes, in the colour of what it drives: a channel's colour for its volume or pitch, the envelope's for its shape, or the channel's when one channel plays the envelope alone, and grey for the mixer and the noise period, which no channel owns. A timer that writes a channel's volume is as opaque as a tone at the loudest volume it writes, so a quiet effect is faint. A timer's note is a dim bar between two bright edges, where a tone's is solid; the denser the bar, the longer the pulse stays on in each cycle, and a tall note fills from its bottom as high as that share of the cycle, so a sweeping pulse width rises and falls like a meter. A short tick marks where a timer starts.
 
@@ -499,13 +499,13 @@ Resting the pointer on a frame lists the timers running there under the chip's r
 
 Each chip's clock and chip type (AY or YM) are set on the track it gets, if the tune has that track to itself, and the frame rate on the project. A TAYM that loops back past its start sets the loop range from its loop to its end, as a tracker module does. A TAYM exported by Bitphase also names its tuning table and the row lengths the tune mostly repeats: the clip takes that table, or that A4 for a custom 12TET table, instead of the detected one, and the tempo and groove follow those rows instead of detected ones.
 
-When play starts, lands or resumes inside a timer effect, the effect plays from there, starting its pattern over; so does a clip trimmed at its start inside one. A PSG clip without timer effects stops those of the clip before it. A chip plays up to twelve timers; a file that needs more opens without those effects and µZX says so. Chips other than AY and YM are left out.
+When play starts, lands or resumes inside a timer effect, the effect plays from there, starting its pattern over; so does a clip trimmed at its start inside one. A PSG clip without timer effects stops those of the clip before it. A chip plays up to twelve timers; a file that needs more opens without those effects and μZX says so. Chips other than AY and YM are left out.
 
 ## If Something Goes Wrong
 
 - **No sound.** An **Audio Problem** message says what is wrong with the audio device: none is selected, it could not be opened, it isn't running, or it runs at a sample rate under 44.1 kHz. Click **Open Audio Settings**, or open them later with `Cmd+,` (**Settings → Audio Settings...**; on macOS, **Settings...** in the app menu), and pick an output device at 44.1 kHz or more. If the device works and you still hear nothing, look at the level meters: no output there means the master volume knob, a chip's **Volume**, or its A, B and C channels, muted in red, are turned down.
 - **Crackles.** The **DSP** bar of the CPU meter near full means the sound engine can't keep up: pick a larger buffer size in the audio settings.
-- **A file doesn't open.** **Can't Open File** means it isn't a PSG file, a TAYM file or a tracker module µZX reads, or it holds no music; `.ay` files, which hold Z80 code, aren't among them. **Can't Open Project** saying a project "was saved by a newer µZX" means this app needs [updating](#updating).
+- **A file doesn't open.** **Can't Open File** means it isn't a PSG file, a TAYM file or a tracker module μZX reads, or it holds no music; `.ay` files, which hold Z80 code, aren't among them. **Can't Open Project** saying a project "was saved by a newer μZX" means this app needs [updating](#updating).
 - **A tune plays two or four times too slowly.** It was written for 100 or 200 Hz, which most PSG files don't record: pick its rate under **fps** (see [Opening Files](#opening-files)).
 - **The app doesn't start.** On macOS the first launch needs **Open Anyway** ([Installing on macOS](#installing-on-macos)); on Windows, **More info → Run anyway** ([Installing on Windows](#installing-on-windows)).
 
@@ -514,5 +514,5 @@ When play starts, lands or resumes inside a timer effect, the effect plays from 
 ## See Also
 
 - [ROADMAP.md](ROADMAP.md) — planned features and release milestones
-- [Tuning systems](design/tuning.md) — background on tuning theory used in µZX Tuning
+- [Tuning systems](design/tuning.md) — background on tuning theory used in μZX Tuning
 - [Vision](motool/vision.md) — long-term project vision

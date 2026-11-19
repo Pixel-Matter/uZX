@@ -166,10 +166,10 @@ Both wires use a track's sixteen channels, on either side of the mixer: it reads
 
 > **Only the first row exists.** The two hardware rows are a goal: live performance on a real chip. No firmware is written.
 
-![The same four stages in µZX, with a real chip, and standalone on an Arduino](../images/midi-ay-pipeline/where-it-runs.svg)
+![The same four stages in μZX, with a real chip, and standalone on an Arduino](../images/midi-ay-pipeline/where-it-runs.svg)
 
-- **In µZX.** Every stage is a plugin on the computer, and the chip is emulated.
-- **A real chip.** µZX runs the instrument, the effects and the mixer, and the PSG wire leaves the computer for a real AY: in a ZX Spectrum, or on an Arduino. The device needs a decoder and register writes, nothing else.
+- **In μZX.** Every stage is a plugin on the computer, and the chip is emulated.
+- **A real chip.** μZX runs the instrument, the effects and the mixer, and the PSG wire leaves the computer for a real AY: in a ZX Spectrum, or on an Arduino. The device needs a decoder and register writes, nothing else.
 - **Standalone.** An Arduino with an AY runs the instrument, the effects and the mixer as well, ported to C, so a MIDI keyboard plays the chip with no computer. Inside one program the wires between the stages are not needed: one decoder reads the keyboard, the frame functions are called in a row, and the result is written to the registers.
 
 What this asks of the design:

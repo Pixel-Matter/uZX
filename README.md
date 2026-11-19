@@ -1,4 +1,4 @@
-# µZX — Chiptune Music Tool
+# μZX — Chiptune Music Tool
 
 [![CI](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml/badge.svg)](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml)
 [![Studio release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=v*&label=studio)](https://github.com/Pixel-Matter/uZX/releases)
@@ -32,19 +32,19 @@ A modern tool for composing and playing back chiptune music for platforms using 
     BP
 ```
 
-![µZX Player](docs/uzx-player.gif)
+![μZX Player](docs/uzx-player.gif)
 
 ## Features
 
 **Three applications from one codebase:**
 
-- **µZX Studio** — full-featured PSG music editor with timeline, instruments, and effects. Includes µZX Tuning.
-- **µZX Player** — lightweight playback for `.uzx` projects and `.psg` files with drag-drop support, file associations, and keyboard shortcuts
-- **µZX Tuning** — standalone tuning table editor for exploring chip tuning systems. (Included in µZX Studio as a built-in tool)
+- **μZX Studio** — full-featured PSG music editor with timeline, instruments, and effects. Includes μZX Tuning.
+- **μZX Player** — lightweight playback for `.uzx` projects and `.psg` files with drag-drop support, file associations, and keyboard shortcuts
+- **μZX Tuning** — standalone tuning table editor for exploring chip tuning systems. (Included in μZX Studio as a built-in tool)
 
 ## Vision
 
-µZX is being developed as the music subsystem of **MoTool** — a planned demotool for retrocomputer demoscene production. MoTool does not exist as a release yet; it will launch as a separate project on the shared codebase once the timeline supports video material and emulator integration. See [docs/motool/vision.md](docs/motool/vision.md) for the full picture.
+μZX is being developed as the music subsystem of **MoTool** — a planned demotool for retrocomputer demoscene production. MoTool does not exist as a release yet; it will launch as a separate project on the shared codebase once the timeline supports video material and emulator integration. See [docs/motool/vision.md](docs/motool/vision.md) for the full picture.
 
 **Music composition:**
 
@@ -74,8 +74,8 @@ A modern tool for composing and playing back chiptune music for platforms using 
 
 The Player and Studio are released separately, on the same [Releases](https://github.com/Pixel-Matter/uZX/releases) page.
 
-- **µZX Player**: take the newest [Player release](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true), tagged `player-v…`, and download `uZXPlayer-<version>-macOS.dmg`. Windows (`-windows-x64.zip`) and Linux (`-linux-x86_64.tar.gz`) builds are there too, unsigned and less tested; see [Installing on Windows](docs/user-guide.md#installing-on-windows) and [on Linux](docs/user-guide.md#installing-on-linux).
-- **µZX Studio**: releases tagged `v…`, files named `uZX-<version>-…`. Studio is a work in progress, so its releases are pre-releases.
+- **μZX Player**: take the newest [Player release](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true), tagged `player-v…`, and download `uZXPlayer-<version>-macOS.dmg`. Windows (`-windows-x64.zip`) and Linux (`-linux-x86_64.tar.gz`) builds are there too, unsigned and less tested; see [Installing on Windows](docs/user-guide.md#installing-on-windows) and [on Linux](docs/user-guide.md#installing-on-linux).
+- **μZX Studio**: releases tagged `v…`, files named `uZX-<version>-…`. Studio is a work in progress, so its releases are pre-releases.
 
 ### macOS Setup
 
@@ -83,12 +83,12 @@ Open the `.dmg` and drag the app to **Applications**. The app isn't notarized by
 
 ### Known Issues
 
-- **macOS: playback scrolling drops some frames on a MacBook Pro's built-in display.** On that XDR panel, at a fixed 50 Hz, about one frame in 25 reaches the screen a refresh late, so scrolling hitches now and then. Drawing a frame there takes about 10 ms, half of it macOS checking the picture for HDR content, which leaves little room before the screen's deadline. An external display is not affected. Before macOS 14 the timeline can also drop frames on other displays and in Viz mode, because there µZX can't time its frames to the screen.
-- **macOS: with two displays on, playback scrolling stutters in waves.** When the displays refresh at slightly different rates, such as an external display at 59.95 Hz beside a MacBook's panel at 60 Hz, macOS shows some frames a refresh late for a few seconds every 20 seconds or so. µZX hands every frame over on time; the stutter comes from macOS. Using a single display, for example a MacBook with its lid closed, avoids it.
+- **macOS: playback scrolling drops some frames on a MacBook Pro's built-in display.** On that XDR panel, at a fixed 50 Hz, about one frame in 25 reaches the screen a refresh late, so scrolling hitches now and then. Drawing a frame there takes about 10 ms, half of it macOS checking the picture for HDR content, which leaves little room before the screen's deadline. An external display is not affected. Before macOS 14 the timeline can also drop frames on other displays and in Viz mode, because there μZX can't time its frames to the screen.
+- **macOS: with two displays on, playback scrolling stutters in waves.** When the displays refresh at slightly different rates, such as an external display at 59.95 Hz beside a MacBook's panel at 60 Hz, macOS shows some frames a refresh late for a few seconds every 20 seconds or so. μZX hands every frame over on time; the stutter comes from macOS. Using a single display, for example a MacBook with its lid closed, avoids it.
 
 ### Tunes at 100 or 200 Hz
 
-Most `.psg` files don't record the frame rate they were written for, so µZX opens them at 50 Hz, and a tune made for 100 or 200 Hz (Atari, multi-speed players) plays two or four times too slowly. To play it at its rate:
+Most `.psg` files don't record the frame rate they were written for, so μZX opens them at 50 Hz, and a tune made for 100 or 200 Hz (Atari, multi-speed players) plays two or four times too slowly. To play it at its rate:
 
 1. Open or import the file as usual (`Cmd+O` in the Player, `Cmd+I` in Studio).
 2. Click **fps** in the transport bar and pick the rate, such as **200 fps**. Every clip that played at the old rate follows. A tune alone in the project takes its timeline along: its tempo scales with the rate (41 BPM at 50 Hz is 164 BPM at 200 Hz), keeping its rows, groove and meter.
@@ -118,7 +118,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, prerequi
 
 ## Community
 
-Join the [µZX Discord](https://discord.com/channels/1103598609804562463/1357634772666552340) for support, discussion, and to connect with other users.
+Join the [μZX Discord](https://discord.com/channels/1103598609804562463/1357634772666552340) for support, discussion, and to connect with other users.
 
 ## Contributing
 

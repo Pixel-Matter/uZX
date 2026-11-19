@@ -49,7 +49,7 @@ set(PLAYER_DOCUMENT_TYPES "<plist><dict><key>CFBundleDocumentTypes</key><array>
   <dict><key>CFBundleTypeName</key><string>Tracker Module</string>
     <key>CFBundleTypeExtensions</key><array>${PLAYER_MODULE_EXTENSIONS}</array>
     <key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Default</string></dict>
-  <dict><key>CFBundleTypeName</key><string>µZX Project</string>
+  <dict><key>CFBundleTypeName</key><string>μZX Project</string>
     <key>CFBundleTypeExtensions</key><array><string>uzx</string></array>
     <key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string></dict>
 </array></dict></plist>")

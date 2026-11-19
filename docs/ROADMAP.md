@@ -1,16 +1,16 @@
-# µZX Roadmap
+# μZX Roadmap
 
 Open work only, highest priority first. Finished work goes to [CHANGELOG.md](../CHANGELOG.md).
 
 ## Goal
 
-µZX is a modern tool for composing and playing back chiptune music, and the music subsystem of [MoTool](motool/vision.md).
+μZX is a modern tool for composing and playing back chiptune music, and the music subsystem of [MoTool](motool/vision.md).
 
-**Done** means: I can write a whole track in µZX Studio, from MIDI to a PSG export, and play it on real hardware; and play live from a MIDI controller through the AY emulator or even a real AY on a Spectrum (MIDI → PC → AY MIDI → ZX → audio). That is a far goal, so work goes milestone by milestone; each milestone below states its own goal.
+**Done** means: I can write a whole track in μZX Studio, from MIDI to a PSG export, and play it on real hardware; and play live from a MIDI controller through the AY emulator or even a real AY on a Spectrum (MIDI → PC → AY MIDI → ZX → audio). That is a far goal, so work goes milestone by milestone; each milestone below states its own goal.
 
 **Out of scope:** anything not on this roadmap. For the current milestone (v1.0) that includes other chips, the node system, tracker UI and mobile.
 
-## µZX Player
+## μZX Player
 
 Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed builds for macOS, unsigned for Windows and Linux).
 
@@ -106,7 +106,7 @@ Grouped by theme, not ordered.
 
 ---
 
-## µZX Studio
+## μZX Studio
 
 ### Instrument & synthesis
 
@@ -147,4 +147,4 @@ See [TODO.md](TODO.md) for granular implementation tasks.
 
 ### Full MoTool vision
 
-µZX is the music subsystem of the larger MoTool project — a demotool for retrocomputer demoscene production. The full vision includes video/FX composing tracks, machine emulation tracks, and a node system for linking music, graphics, and code. See [motool/vision.md](motool/vision.md) for details; it is the initial vision, and only the items listed under **Video & FX** above are tracked.
+μZX is the music subsystem of the larger MoTool project — a demotool for retrocomputer demoscene production. The full vision includes video/FX composing tracks, machine emulation tracks, and a node system for linking music, graphics, and code. See [motool/vision.md](motool/vision.md) for details; it is the initial vision, and only the items listed under **Video & FX** above are tracked.

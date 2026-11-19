@@ -81,7 +81,7 @@ A TAYM opens as a PSG clip with timers (`ClipTimers`, in the clip's state as a `
 - Every clip chooses its bank where it begins; a clip without timers chooses none, which stops the timers a clip before it left running.
 - A clip trimmed at its start leaves out the commands before it, and starts the timers they leave running where it starts, as play that resumes there does (`TimerEncoder::skip` and `restart`). In raw beats nothing is left out: Tracktion chases the controllers, and the chip starts a timer stated as on.
 
-A project with such a clip opens in an older µZX, which plays the frames without the timers and keeps the timers when it saves. That is why the edit format version is not raised: raising it would lock every project out of older versions.
+A project with such a clip opens in an older μZX, which plays the frames without the timers and keeps the timers when it saves. That is why the edit format version is not raised: raising it would lock every project out of older versions.
 
 ## Reading a TAYM
 

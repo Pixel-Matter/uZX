@@ -1101,7 +1101,7 @@ std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
     if (EditFileOps::readEditFormatVersion(editFile) > EditFileOps::editFormatVersion) {
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
             "Can't Open Project",
-            "'" + editFile.getFileName() + "' was saved by a newer " + String::fromUTF8("µZX")
+            "'" + editFile.getFileName() + "' was saved by a newer " + String::fromUTF8("μZX")
                 + ". Update this app to open it.",
             "OK");
         return nullptr;
@@ -1111,7 +1111,7 @@ std::unique_ptr<te::Edit> BaseController::createOrLoadEdit(File editFile) {
     if (edit == nullptr)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
             "Can't Open Project",
-            "'" + editFile.getFileName() + "' is not a " + String::fromUTF8("µZX") + " project or is damaged.",
+            "'" + editFile.getFileName() + "' is not a " + String::fromUTF8("μZX") + " project or is damaged.",
             "OK");
     return edit;
 }

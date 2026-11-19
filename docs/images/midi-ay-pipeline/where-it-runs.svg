@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="244" viewBox="0 0 680 244" role="img">
 <title>Where each stage of the pipeline runs</title>
-<desc>Three setups over the same four stages. In µZX all four stages run on the computer with an emulated chip. With a real chip, the instrument, effects and mixer run in µZX and the PSG wire goes by MIDI to a real AY in a ZX Spectrum or on an Arduino. Standalone, all four stages run on the Arduino as one program, passing frames in memory.</desc>
+<desc>Three setups over the same four stages. In μZX all four stages run on the computer with an emulated chip. With a real chip, the instrument, effects and mixer run in μZX and the PSG wire goes by MIDI to a real AY in a ZX Spectrum or on an Arduino. Standalone, all four stages run on the Arduino as one program, passing frames in memory.</desc>
 <style>
 text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; dominant-baseline: central; }
 rect { stroke-width: 0.75; }
@@ -32,7 +32,7 @@ rect { stroke-width: 0.75; }
 <text class="t m" x="455" y="30">Chip mixer</text>
 <text class="t m" x="585" y="30">AY chip</text>
 
-<text class="t" x="42" y="60">In µZX</text>
+<text class="t" x="42" y="60">In μZX</text>
 <text class="s" x="42" y="77">emulated chip</text>
 <text class="t" x="42" y="112">Real chip</text>
 <text class="s" x="42" y="129">ZX or Arduino</text>
@@ -64,7 +64,7 @@ rect { stroke-width: 0.75; }
 <g class="coral"><rect x="530" y="154" width="110" height="36" rx="8"/><text class="t m" x="585" y="172">Real AY</text></g>
 
 <rect class="teal" x="140" y="210" width="14" height="14" rx="3"/>
-<text class="s" x="160" y="217">In µZX</text>
+<text class="s" x="160" y="217">In μZX</text>
 <rect class="coral" x="216" y="210" width="14" height="14" rx="3"/>
 <text class="s" x="236" y="217">On the device, C or Z80</text>
 <line class="arr" x1="398" y1="217" x2="416" y2="217" marker-end="url(#arrow)"/>

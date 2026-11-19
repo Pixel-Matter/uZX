@@ -1,6 +1,6 @@
 # Tempo map for frame-based music
 
-> **Status: research and proposal, not implemented.** For µZX Studio. Detecting sections from imported modules or dumps is out of scope. The choices under [Decisions](#decisions) were confirmed on 2026-11-18; one naming question is open.
+> **Status: research and proposal, not implemented.** For μZX Studio. Detecting sections from imported modules or dumps is out of scope. The choices under [Decisions](#decisions) were confirmed on 2026-11-18; one naming question is open.
 
 Sections of a tune with their own meter, tempo and groove: an intro in 3/4, a one-beat pickup bar, a break at half speed, an outro that speeds up. Every section runs on the same frame rate, so a beat is always a whole number of frames and the beat and groove grid changes from section to section. Code it touches: `src/models/PsgFrameRetimer.*` (`PsgTiming`), `src/models/SnapLadder.*`, `src/models/EditUtilities.*`, `src/models/PsgList.*`, `src/gui/timeline/` (`TimelineGrid`, `Ruler`), `src/gui/common/Transport.*`.
 
@@ -8,7 +8,7 @@ Sections of a tune with their own meter, tempo and groove: an intro in 3/4, a on
 
 | Need | Today |
 | --- | --- |
-| Tempo storage | Tracktion's `TempoSequence`: `TEMPO` and `TIMESIG` nodes in the edit. µZX never adds a second of either |
+| Tempo storage | Tracktion's `TempoSequence`: `TEMPO` and `TIMESIG` nodes in the edit. μZX never adds a second of either |
 | Frames per beat | Derived, not stored: `PsgTiming::getFramesPerBeat` is the project fps times the beat length of the tempo at the transport position. `setFramesPerBeat` and `setBpmSnappedToFrames` write a BPM whose beat is a whole number of frames |
 | Groove | `IDs::gridSubdivision` on the edit: frame counts of the groups in one beat, such as `6 7 6 7`. One pattern for the whole edit. It is a grid, not a playback effect |
 | Grid and snap | `SnapLadder`: frames, groove rows, beats, bars. Rounding reads the tempo at each beat, so it already follows a tempo change; the ladder's levels and its pattern are built once, from the tempo at the start of the view (`TimelineGrid::makeSnapLadder`) |
@@ -34,7 +34,7 @@ Read from `tracktion_core/utilities/tracktion_Tempo.h` and `tracktion_engine/mod
 
 Two risks found in the source:
 
-- **Stepped BPM passes through a `float`.** With a later tempo point present, the section's BPM comes from `calcCurveBpm`, and `getBezierEnds` casts the held value to `float`. A BPM such as 3000/13 loses about 3 parts in 10⁸, which is about 0.001 frame after ten minutes at 50 Hz and more at 200 Hz. `SnapLadder` treats 0.001 frame as its tolerance. A one-line patch in the µZX fork of the engine removes the cast; a test with many sections should decide whether it is needed.
+- **Stepped BPM passes through a `float`.** With a later tempo point present, the section's BPM comes from `calcCurveBpm`, and `getBezierEnds` casts the held value to `float`. A BPM such as 3000/13 loses about 3 parts in 10⁸, which is about 0.001 frame after ten minutes at 50 Hz and more at 200 Hz. `SnapLadder` treats 0.001 frame as its tolerance. A one-line patch in the μZX fork of the engine removes the cast; a test with many sections should decide whether it is needed.
 - **Time signature points are at least a beat apart.** A 1/4 bar followed by another signature is the shortest section the engine allows, which is enough for the goal.
 
 ## Other software
@@ -61,11 +61,11 @@ What they show:
 - **Waveform's flow for a short odd bar is long**: insert space in a marked region on the selected tracks, then add a signature change at the bar and another after it. Users on the KVR forum call it complicated. A section as one object avoids this.
 - **OpenMPT's per-pattern swing and Furnace's groove list** are the nearest models for a groove that changes per section.
 
-## What follows for µZX
+## What follows for μZX
 
 ### 1. A frame-exact tempo map
 
-Tracktion's sequence can hold frame-based sections as it is, under three rules that µZX has to enforce on every write:
+Tracktion's sequence can hold frame-based sections as it is, under three rules that μZX has to enforce on every write:
 
 - Every tempo point has curve `1`: steps only.
 - Every BPM gives a whole number of frames per beat: `bpm = 240 * fps / (framesPerBeat * denominator)`.
@@ -104,7 +104,7 @@ A section is one object to the user: a start on a bar line, a meter, frames per 
 
 ## Proposal in short
 
-Keep Tracktion's `TempoSequence` as the one tempo map. Put every write behind one µZX module that keeps the three rules of a frame-exact map. Store the groove on the section. Time-lock PSG frames. Show sections as blocks in a lane and edit them through the transport boxes.
+Keep Tracktion's `TempoSequence` as the one tempo map. Put every write behind one μZX module that keeps the three rules of a frame-exact map. Store the groove on the section. Time-lock PSG frames. Show sections as blocks in a lane and edit them through the transport boxes.
 
 ## Order of work
 
@@ -134,4 +134,4 @@ Confirmed on 2026-11-18.
 
 ## Open questions
 
-- **The name of the groove.** "Swing" would match OpenMPT's tempo swing and keep the word away from Tracktion's groove templates. "Groove" matches Furnace, LSDj and M8, where it is a cycle of row lengths, and an even split such as 6 6 6 6 is not swung. Tracktion's templates appear nowhere in µZX's UI, and the code already calls the pattern `gridSubdivision`.
+- **The name of the groove.** "Swing" would match OpenMPT's tempo swing and keep the word away from Tracktion's groove templates. "Groove" matches Furnace, LSDj and M8, where it is a cycle of row lengths, and an even split such as 6 6 6 6 is not swung. Tracktion's templates appear nowhere in μZX's UI, and the code already calls the pattern `gridSubdivision`.

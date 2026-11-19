@@ -1,6 +1,6 @@
 # μZX User Guide
 
-μZX is a suite of applications for working with PSG chip music (AY-3-8910 / YM2149), targeting ZX Spectrum demoscene production.
+μZX Player plays AY-3-8910 / YM2149 chip music and shows what the chip plays. This guide covers it in full, and μZX Studio and μZX Tuning too.
 
 The screenshots show the macOS build using the [Guide demo project](../tests/fixtures/Guide%20demo.uzx).
 
@@ -10,9 +10,9 @@ The screenshots show the macOS build using the [Guide demo project](../tests/fix
 
 | App | Description |
 |-----|-------------|
-| **μZX Studio** | Full-featured PSG music editor with timeline, instruments, and automation (Work in progress) |
-| **μZX Player** | Lightweight player with visualization for `.psg` files, `.taym` files, tracker modules (`.pt3`, `.stc`, …) and `.uzx` files |
-| **μZX Tuning** | Tuning table (note table) editor/viewer. Supports equal temperament and just-intonation |
+| **μZX Player** | Player with visualization for `.psg` files, `.taym` files, tracker modules (`.pt3`, `.stc`, …) and `.uzx` files |
+| **μZX Tuning** | Tuning table (note table) viewer in equal temperament and just intonation; a window in the Player and Studio |
+| **μZX Studio** | Editor for writing AY music, with a timeline, instruments and automation. An early prototype, not ready for testing yet |
 
 ### Installing on macOS
 
@@ -319,11 +319,11 @@ Selecting the track reveals its devices, including the AY chip emulator.
 
 ## μZX Tuning
 
-A standalone editor for generating and previewing AY chip tuning tables.
+An editor for generating and previewing AY chip tuning tables, in a window of its own.
 
 ### Layout
 
-The Tuning window is also available from **Settings → Tuning Tables** in Studio.
+The Player and Studio open the Tuning window from **Settings → Tuning Tables** (`Cmd+Shift+T`).
 
 <!-- guide-figure:tuning-layout -->
 ![Tuning tables, controls, and note grid](images/user-guide/tuning-layout.png)
@@ -423,7 +423,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 | `Cmd+Z` / `Cmd+Shift+Z` | Undo / Redo, such as AY chip settings or a clip's tuning; `Ctrl+Y` also redoes on Windows and Linux | Player, Studio |
 | `Delete` or `Backspace` | Delete the selected clip, track, or device | Studio |
 | `Cmd+T` | Add track | Studio |
-| `Cmd+Shift+T` | Open Tuning Tables | Studio |
+| `Cmd+Shift+T` | Open Tuning Tables | Player, Studio |
 | `Cmd+,` | **Audio Settings...**, and in Studio the MIDI ports too; on macOS, **Settings...** in the app menu, next to **About** | Player, Studio |
 | `F` | Viz mode on / off: full screen, only the notes and each chip's scopes | Player |
 | `V` | In Viz mode, show notes and scopes, then notes, then scopes | Player |

@@ -337,10 +337,8 @@ StringArray AppController::getMenuBarNames() {
     auto names = isPlayer ? StringArray { "File", "Edit", "Transport", "View", "Settings", "Help" }
                           : MainAppCommands::getMenuBarNames();
    #if JUCE_MAC
-    // About and Settings are in the app menu, see initialize()
+    // About and Audio Settings are in the app menu, see initialize()
     names.removeString("Help");
-    if (isPlayer)
-        names.removeString("Settings");
    #endif
     return names;
 }
@@ -424,7 +422,7 @@ PopupMenu AppController::getMenuForIndex(int /* menuIndex */, const String& menu
                 menu.addSubMenu("Timecode Format", Helpers::buildTimecodeFormatMenu(*edit));
             }
         } else if (menuName == "Settings") {
-            menu.addCommandItem(&commandManager_, MainAppCommands::settingsAudioMidi);
+            return MainAppCommands::createMenu(&commandManager_, menuName);  // as Studio's, less what isn't registered
         } else if (menuName == "Help") {
             menu.addCommandItem(&commandManager_, MainAppCommands::helpAbout);
             menu.addCommandItem(&commandManager_, MainAppCommands::helpCheckForUpdates);

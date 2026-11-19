@@ -247,6 +247,18 @@ public:
             expect(writtenNow(shared));
         }
 
+        beginTest("An edit without a file, as the Tuning window's, leaves the recent edits and folder alone");
+        {
+            EditFileOps::setRecentEditsDirectory(storage, root);
+            auto edit = tracktion::createEmptyEdit(engine, {});
+            edit->ensureNumberOfAudioTracks(1);  // changed
+            EditFileOps::autoSaveEdit(*edit);
+            edit->resetChangedStatus();
+            EditFileOps::autoSaveEdit(*edit);
+            expectEquals(EditFileOps::getRecentEdits(storage)[0], shared.getFullPathName());
+            expectEquals(EditFileOps::getRecentEditsDirectory(storage).getFullPathName(), root.getFullPathName());
+        }
+
         beginTest("A working edit is written every time");
         {
             const auto working = EditFileOps::getUnnamedEditFile(storage);

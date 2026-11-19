@@ -68,6 +68,8 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 
 ### Menus
 - **Help → Check for Updates...** (on macOS, in the app menu) tells whether a newer release of the app is out on GitHub, and links to its page, or to all releases when yours is the latest; the Player looks for Player releases and Studio for Studio's
+- Player: **Settings → Tuning Tables...** (`Cmd+Shift+T`) opens the Tuning window, as in Studio
+- Fixed: closing the Tuning window set the Open dialog's folder to none, so it started in a default folder
 - Player: the Transport menu has **End**, **Step Back** / **Step Forward** and **Frame Back** / **Frame Forward**, each with its key, which no menu showed before
 - Menu items are in title case, and those that open a window end in "...": **Play/Pause**, **Zoom to Project**, **Zoom In**, **Render to Audio**, **Audio Settings...**, **Plugins...**, **Tuning Tables...**, and **Show Hex Values on Hover**, **Tuning and Key...** and **Tempo Inspector...** in the clip menu
 

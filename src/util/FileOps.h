@@ -71,7 +71,8 @@ bool saveEdit(tracktion::Edit& edit, bool warnOfFailure, bool forceSaveEvenIfNot
 
 /** The save the app makes on its own: when an edit opens, when another replaces it, and on quit. A working
     edit is written every time; a user's file only when it has changed, so a file that is only played stays
-    as it is on disk. Either way the edit becomes the most recent one. */
+    as it is on disk. Either way the edit becomes the most recent one. An edit without a file, such as the
+    Tuning window's, is left alone. */
 void autoSaveEdit(tracktion::Edit& edit);
 
 bool saveEditAs(tracktion::Edit& edit, const File& file);

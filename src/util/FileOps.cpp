@@ -239,6 +239,8 @@ bool saveEdit(te::Edit& edit, bool warnOfFailure, bool forceSaveEvenIfNotModifie
 }
 
 void autoSaveEdit(te::Edit& edit) {
+    if (edit.editFileRetriever() == File())
+        return;
     // Not save() with force off: it writes a temporary copy next to the file even when nothing changed
     if (isWorkingEdit(edit) || edit.hasChangedSinceSaved())
         saveEdit(edit, true, true, false);

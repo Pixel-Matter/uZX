@@ -48,6 +48,8 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] **Playhead stepping** — Player: ←/→ a grid line, Option+←/→ a frame; stopped, the step is heard as scrubbing
 - [x] Rework tempo detection
 - [x] PSG hover shown only when minor grid step is a frame
+- [x] **Tuning in the Player** — **Settings → Tuning Tables...** (`Cmd+Shift+T`)
+- [ ] Tuning detector button in the Player
 
 #### P2 — Nice to have
 

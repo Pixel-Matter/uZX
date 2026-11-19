@@ -11,25 +11,17 @@
 A player for AY-3-8910 / YM2149 chip music — ZX Spectrum, Amstrad CPC, MSX, Atari ST — that shows what the chip plays: each channel's notes, envelope and noise on a timeline, and a scope for each channel. macOS is the supported platform; the Windows and Linux builds are previews, unsigned and less tested.
 
 ```text
-        █▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌
-        █▌  █▌    █▌      █▌    █▌█▌    █▌
-  █▌█▌█▌█▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌█▌█▌█▌
-        █▌
-                        |   |
-    ,---.---.  ,---.  --|---|--  ,---.   ,---
-    |   |   |       |   |   |   |    |  |
-        |   |   ,---|   |   |   |---'   |
+        █▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌                   ,--------.   ,---.
+        █▌  █▌    █▌      █▌    █▌█▌    █▌                   `---/ / / \ / / /
+  █▌█▌█▌█▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌█▌█▌█▌                / / / \ ' / /
+        █▌                                              B8   88  / /   / / /    Copyright 2025-2026
+                        |   |                           B8   88   /   / / . \     pixelmatter.org
+    ,---.---.  ,---.  --|---|--  ,---.   ,---           B8.  88. /---/ / / \ \
+    |   |   |       |   |   |   |    |  |               B8"oo""8o --'---'   `-'
+        |   |   ,---|   |   |   |---'   |               BP
             |  |    |   |   |   |       |
                `---'    |   |    `---'
                         `-- `--
-         ,--------.   ,---.
-         `---/ / / \ / / /
-            / / / \ ' / /
-    B8   88  / /   / / /    Copyright 2025-2026
-    B8   88   /   / / . \     pixelmatter.org
-    B8.  88. /---/ / / \ \
-    B8"oo""8o --'---'   `-'
-    BP
 ```
 
 ![μZX Player](docs/uzx-player.gif)

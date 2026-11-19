@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml/badge.svg)](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=player-v*&label=release)](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENCE.md)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/Pixel-Matter/uZX/blob/develop/LICENCE.md)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/Pixel-Matter/uZX/releases)
 
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-00599C?logo=cplusplus)](https://en.cppreference.com/w/cpp/23)

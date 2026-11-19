@@ -23,9 +23,19 @@ jobs:
       - name: Stage the README and docs
         run: |
           mkdir site
-          cp README.md CHANGELOG.md CONTRIBUTING.md AUTHOR.md LICENCE.md AGENTS.md site/
+          cp README.md CHANGELOG.md AUTHOR.md AGENTS.md site/
+          # Jekyll renders a CONTRIBUTING or LICENCE file only when it has front matter
+          for f in CONTRIBUTING.md LICENCE.md; do { printf -- '---\n---\n'; cat "$f"; } > "site/$f"; done
           cp -r docs site/
-          printf 'title: μZX\nbaseurl: /uZX\n' > site/_config.yml
+          # The page's own address, and "Improve this page" edits develop, where changes go
+          cat > site/_config.yml <<'YAML'
+          title: μZX Player
+          url: https://pixelmatter.org
+          baseurl: /uZX
+          github:
+            source:
+              branch: develop
+          YAML
           # Links to code and test files, which aren't published, go to GitHub at this commit
           sed -i -E "s#\]\(\.\./(src|tests)/#](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/\1/#g" site/docs/*.md
 

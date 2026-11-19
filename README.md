@@ -4,6 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=player-v*&label=release)](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENCE.md)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/Pixel-Matter/uZX/releases)
+
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-00599C?logo=cplusplus)](https://en.cppreference.com/w/cpp/23)
 [![Built with JUCE](https://img.shields.io/badge/built%20with-JUCE-8DC63F)](https://juce.com/)
 [![Powered by Tracktion Engine](https://img.shields.io/badge/powered%20by-Tracktion%20Engine-00A9FF)](https://github.com/Tracktion/tracktion_engine/)
@@ -117,10 +118,6 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for build setu
 - [zxtune](https://github.com/vitamin-caig/zxtune) by Vitamin/CAIG — tracker module players (LGPL-3.0), built from the [uzx branch](https://github.com/Pixel-Matter/zxtune/tree/uzx) of our fork
 
 Greets to diver, spke, n1k-o, bfox, wbcbz7, Pator, Megus, Volutar and all ZX Spectrum musicians and demosceners!
-
-<img src="https://raw.githubusercontent.com/Tracktion/tracktion_engine/develop/tutorials/images/tracktion_engine_powered.png" alt="Powered by Tracktion Engine" width="113">
-
-## About
 
 See [AUTHOR.md](AUTHOR.md) for the story behind this project.
 

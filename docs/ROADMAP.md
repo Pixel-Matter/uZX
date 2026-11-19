@@ -30,7 +30,7 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] **Tracktion Engine** — the fork now sits on upstream `develop` @ `9d622faa` (2026-10-20), the last commit before upstream moved to JUCE 9, with JUCE 8.0.17-security. v3.2.0 is still upstream's latest tag; revisit JUCE 9 when v3.5 is tagged
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
 - [ ] **UX quality review** — open findings in [ux-review.md](ux-review.md); review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
-- [ ] Good human proof-read **user guide**
+- [ ] Good human proof-read **user guide** and readme, including new animated gif
 - [ ] **PixelMatter.org/uZX** page, synced on releases
 - [ ] **Release notes** — CHANGELOG entry for the tag
 
@@ -46,14 +46,15 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] Update zxtune fork
 - [x] "check for updates" menu item
 - [x] **Playhead stepping** — Player: ←/→ a grid line, Option+←/→ a frame; stopped, the step is heard as scrubbing
-- [ ] Rework tempo detection
-- [ ] PSG hover shown only when minor grid step is a frame
+- [x] Rework tempo detection
+- [x] PSG hover shown only when minor grid step is a frame
 
 #### P2 — Nice to have
 
 - [x] **Clock-mode frame grid** — frame steps divide the second (sixths and twelfths at 24/48 fps), so ticks no longer run …20, 24, 29; the frame field is three digits wide throughout at 200 fps
 - [ ] **DMG background image**, note in background how to pass the gatekeeper with "Open anyway"
 - [ ] **PDF user guide**
+- [ ] **Discord**
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
 - [ ] **Channel split mode** — each AY channel in its own lane
 - [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.

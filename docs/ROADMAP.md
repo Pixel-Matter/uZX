@@ -1,16 +1,16 @@
-# µZX Roadmap
+# μZX Roadmap
 
 Open work only, highest priority first. Finished work goes to [CHANGELOG.md](../CHANGELOG.md).
 
 ## Goal
 
-µZX is a modern tool for composing and playing back chiptune music, and the music subsystem of [MoTool](motool/vision.md).
+μZX is a modern tool for composing and playing back chiptune music, and the music subsystem of [MoTool](motool/vision.md).
 
-**Done** means: I can write a whole track in µZX Studio, from MIDI to a PSG export, and play it on real hardware; and play live from a MIDI controller through the AY emulator or even a real AY on a Spectrum (MIDI → PC → AY MIDI → ZX → audio). That is a far goal, so work goes milestone by milestone; each milestone below states its own goal.
+**Done** means: I can write a whole track in μZX Studio, from MIDI to a PSG export, and play it on real hardware; and play live from a MIDI controller through the AY emulator or even a real AY on a Spectrum (MIDI → PC → AY MIDI → ZX → audio). That is a far goal, so work goes milestone by milestone; each milestone below states its own goal.
 
 **Out of scope:** anything not on this roadmap. For the current milestone (v1.0) that includes other chips, the node system, tracker UI and mobile.
 
-## µZX Player
+## μZX Player
 
 Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed builds for macOS, unsigned for Windows and Linux).
 
@@ -30,7 +30,7 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] **Tracktion Engine** — the fork now sits on upstream `develop` @ `9d622faa` (2026-10-20), the last commit before upstream moved to JUCE 9, with JUCE 8.0.17-security. v3.2.0 is still upstream's latest tag; revisit JUCE 9 when v3.5 is tagged
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
 - [ ] **UX quality review** — open findings in [ux-review.md](ux-review.md); review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
-- [ ] Good human proof-read **user guide**
+- [ ] Good human proof-read **user guide** and readme, including new animated gif
 - [ ] **PixelMatter.org/uZX** page, synced on releases
 - [ ] **Release notes** — CHANGELOG entry for the tag
 
@@ -46,14 +46,17 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] Update zxtune fork
 - [x] "check for updates" menu item
 - [x] **Playhead stepping** — Player: ←/→ a grid line, Option+←/→ a frame; stopped, the step is heard as scrubbing
-- [ ] Rework tempo detection
-- [ ] PSG hover shown only when minor grid step is a frame
+- [x] Rework tempo detection
+- [x] PSG hover shown only when minor grid step is a frame
+- [x] **Tuning in the Player** — **Settings → Tuning Tables...** (`Cmd+Shift+T`)
+- [ ] Tuning detector button in the Player
 
 #### P2 — Nice to have
 
 - [x] **Clock-mode frame grid** — frame steps divide the second (sixths and twelfths at 24/48 fps), so ticks no longer run …20, 24, 29; the frame field is three digits wide throughout at 200 fps
 - [ ] **DMG background image**, note in background how to pass the gatekeeper with "Open anyway"
 - [ ] **PDF user guide**
+- [ ] **Discord**
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
 - [ ] **Channel split mode** — each AY channel in its own lane
 - [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.
@@ -105,7 +108,7 @@ Grouped by theme, not ordered.
 
 ---
 
-## µZX Studio
+## μZX Studio
 
 ### Instrument & synthesis
 
@@ -146,4 +149,4 @@ See [TODO.md](TODO.md) for granular implementation tasks.
 
 ### Full MoTool vision
 
-µZX is the music subsystem of the larger MoTool project — a demotool for retrocomputer demoscene production. The full vision includes video/FX composing tracks, machine emulation tracks, and a node system for linking music, graphics, and code. See [motool/vision.md](motool/vision.md) for details; it is the initial vision, and only the items listed under **Video & FX** above are tracked.
+μZX is the music subsystem of the larger MoTool project — a demotool for retrocomputer demoscene production. The full vision includes video/FX composing tracks, machine emulation tracks, and a node system for linking music, graphics, and code. See [motool/vision.md](motool/vision.md) for details; it is the initial vision, and only the items listed under **Video & FX** above are tracked.

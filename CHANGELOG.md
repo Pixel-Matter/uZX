@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to µZX are documented here. µZX currently supports AY-3-8910/YM2149 platforms (ZX Spectrum, Amstrad CPC, MSX, Atari ST, etc.).
+All notable changes to μZX are documented here. μZX currently supports AY-3-8910/YM2149 platforms (ZX Spectrum, Amstrad CPC, MSX, Atari ST, etc.).
 
 ## [Unreleased]
 
@@ -24,7 +24,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Player: **File → Import PSG** (`Cmd+I`) is gone; **Open** does the same
 - Player: each tune keeps its stereo, mutes and other changes. Opening it again brings them back, and they survive a restart, where the copies lived in the temp folder and opening a tune again reset it. Open Recent lists the tunes
 - Fixed: several files selected in Finder and opened in the Player, such as the files of a Turbo Sound set, did nothing; so did several paths on the command line. They open together, and a file that can't be found or opened is named in a message
-- Fixed: the Open dialog listed `.ay` files and a drop accepted them, though µZX can't play them: an AYEmul file holds Z80 code. They are no longer offered
+- Fixed: the Open dialog listed `.ay` files and a drop accepted them, though μZX can't play them: an AYEmul file holds Z80 code. They are no longer offered
 - Fixed: Windows: a file opened while the Player ran started a whole second Player, which loaded and saved the last project before handing the file over. It hands the file over at once
 - Fixed: Linux: a file opened from the file manager while the Player ran did nothing. It opens in a new Player window
 - Fixed: the Open dialog started in a folder that doesn't exist until a first Save As; on Linux without zenity or kdialog, its name was typed into the file name box. It starts in the nearest folder that exists
@@ -68,6 +68,8 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 
 ### Menus
 - **Help → Check for Updates...** (on macOS, in the app menu) tells whether a newer release of the app is out on GitHub, and links to its page, or to all releases when yours is the latest; the Player looks for Player releases and Studio for Studio's
+- Player: **Settings → Tuning Tables...** (`Cmd+Shift+T`) opens the Tuning window, as in Studio
+- Fixed: closing the Tuning window set the Open dialog's folder to none, so it started in a default folder
 - Player: the Transport menu has **End**, **Step Back** / **Step Forward** and **Frame Back** / **Frame Forward**, each with its key, which no menu showed before
 - Menu items are in title case, and those that open a window end in "...": **Play/Pause**, **Zoom to Project**, **Zoom In**, **Render to Audio**, **Audio Settings...**, **Plugins...**, **Tuning Tables...**, and **Show Hex Values on Hover**, **Tuning and Key...** and **Tempo Inspector...** in the clip menu
 
@@ -268,7 +270,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 ### Added
 - Embedded fonts
 - Greetz updated
-- First public pre-release of µZX Player
+- First public pre-release of μZX Player
 
 ## [v0.3.1] - 2026-02-13
 
@@ -288,12 +290,12 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - macOS deployment target set to 11.0
 
 ### Added
-- Release plan and documentation for µZX Player
+- Release plan and documentation for μZX Player
 
 ## [v0.2.0] - 2026-02-11
 
 ### Added
-- **µZX Player**: lightweight playback-only variant of µZX Studio
+- **μZX Player**: lightweight playback-only variant of μZX Studio
   - File drag-and-drop and system file opening
   - Auto-fit track heights
   - Transparent clips with disabled selection
@@ -371,7 +373,7 @@ All notable changes to µZX are documented here. µZX currently supports AY-3-89
 - Envelope play mode with shape controls
 - Mark notes with periods divisible by 16
 - ChipInstrument MIDI plugin with playRate, aftertouch, pitch bend
-- µZX Tuning as a separate standalone app target
+- μZX Tuning as a separate standalone app target
 
 ### Fixed
 - MidiToPsg MPEInstrument handling for pressure and pitchBend

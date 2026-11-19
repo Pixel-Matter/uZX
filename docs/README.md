@@ -1,4 +1,4 @@
-# µZX documentation
+# μZX documentation
 
 | For | Document | What it is |
 | --- | --- | --- |

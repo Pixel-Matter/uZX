@@ -10,10 +10,6 @@ Not covered yet: a release build run on macOS (Gatekeeper, the DMG, Finder assoc
 | --- | --- | --- | --- |
 | M7 | **Tab does not reach the transport or chip controls.** Screen readers now name the readouts, knobs, scopes and meters, and no text to read is below 4.5:1. Left: no control takes Tab focus, and the look-and-feel draws no focus ring. A focused knob or button would also take the arrows and Space the Player steps and plays with. | `src/gui/common/Transport.cpp`, `src/plugins/uZX/aychip/AYPluginEditor.cpp`, `src/gui/common/LookAndFeel.cpp` | Focus by Tab only (`setMouseClickGrabsKeyboardFocus(false)`), a focus ring in the look-and-feel, and Escape to give the keys back to the transport. |
 
-## Low
-
-- **Two different µ characters.** The app names use the Greek μ (U+03BC: `src/CMakeLists.txt`, `App.cpp`); the README, the plist's "µZX Project" and the error dialogs use the micro sign µ (U+00B5), which `Option+M` types on a Mac. Spotlight searched with `Option+M` won't find "μZX Player". Pick one: the Greek μ in every text changes text only; the micro sign in the app names renames the bundle and the settings folder, so existing settings and tune copies would have to be moved on first launch.
-
 ## Docs and README
 
 Left: a link only the server's owner can make.

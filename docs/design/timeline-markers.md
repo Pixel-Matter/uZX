@@ -8,7 +8,7 @@ Named points on the timeline: the user's own, and the pattern starts of an impor
 
 | Need | Today |
 | --- | --- |
-| Marker storage | Tracktion's `MarkerTrack` with `MarkerClip`s, reached through `Edit::getMarkerManager()`: create, find by ID, next and previous from a time. `Edit::ensureMarkerTrack()` creates the track. µZX uses none of it |
+| Marker storage | Tracktion's `MarkerTrack` with `MarkerClip`s, reached through `Edit::getMarkerManager()`: create, find by ID, next and previous from a time. `Edit::ensureMarkerTrack()` creates the track. μZX uses none of it |
 | Section storage | Tracktion's `ArrangerTrack` with `ArrangerClip`s: a named range with a colour. Every edit has one (`Edit` calls `ensureArrangerTrack()` on load). The engine stores it and nothing more; moving sections is Waveform's own UI |
 | Hidden global tracks | `TracksContainerComponent::buildTracks` skips the marker, arranger, chord, tempo and master tracks |
 | Ruler | `RulerComponent`, 24 px: the upper half seeks, scrolls and zooms; the lower half is the loop strip |
@@ -130,11 +130,11 @@ How long the module played up to the loop decides how many markers there are: po
 
 **A. Absolute time (recommended).** A marker stays on its frame when the tempo changes, as PSG data does.
 
-**B. Bars and beats.** A marker moves with the music when the tempo changes. Tracktion picks between the two from an engine setting by default; µZX would pass the sync type itself.
+**B. Bars and beats.** A marker moves with the music when the tempo changes. Tracktion picks between the two from an engine setting by default; μZX would pass the sync type itself.
 
 ## Edit file format
 
-No bump. The marker track is a Tracktion track: an older µZX loads it, hides it, and saves it back unchanged. The user guide gets the lane, the gestures and the three commands; the CHANGELOG gets one line per app.
+No bump. The marker track is a Tracktion track: an older μZX loads it, hides it, and saves it back unchanged. The user guide gets the lane, the gestures and the three commands; the CHANGELOG gets one line per app.
 
 ## Order of work
 

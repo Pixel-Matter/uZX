@@ -1,14 +1,13 @@
-# µZX — Chiptune Music Tool
+# μZX Player
 
 [![CI](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml/badge.svg)](https://github.com/Pixel-Matter/uZX/actions/workflows/ci.yml)
-[![Studio release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=v*&label=studio)](https://github.com/Pixel-Matter/uZX/releases)
-[![Player release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=player-v*&label=player)](https://github.com/Pixel-Matter/uZX/releases)
+[![Release](https://img.shields.io/github/v/release/Pixel-Matter/uZX?include_prereleases&sort=semver&filter=player-v*&label=release)](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENCE.md)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/Pixel-Matter/uZX/releases)
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-00599C?logo=cplusplus)](https://en.cppreference.com/w/cpp/23)
 [![Built with JUCE](https://img.shields.io/badge/built%20with-JUCE-8DC63F)](https://juce.com/)
 
-A modern tool for composing and playing back chiptune music for platforms using the AY-3-8910/YM2149 sound chips — ZX Spectrum, Amstrad CPC, MSX, Atari ST, and others. While the name references ZX Spectrum, the architecture is chip-agnostic and designed to support additional sound chips in the future. Built with JUCE. macOS is the supported platform; the Windows and Linux builds are previews, unsigned and less tested. Features a timeline-based DAW interface with precise chip emulation.
+A player for AY-3-8910 / YM2149 chip music — ZX Spectrum, Amstrad CPC, MSX, Atari ST — that shows what the chip plays: each channel's notes, envelope and noise on a timeline, and a scope for each channel. macOS is the supported platform; the Windows and Linux builds are previews, unsigned and less tested.
 
 ```text
         █▌█▌█▌  █▌█▌█▌  █▌  █▌  █▌█▌█▌  █▌
@@ -32,50 +31,36 @@ A modern tool for composing and playing back chiptune music for platforms using 
     BP
 ```
 
-![µZX Player](docs/uzx-player.gif)
+![μZX Player](docs/uzx-player.gif)
 
-## Features
+## What it plays
 
-**Three applications from one codebase:**
+- PSG register dumps (`.psg`), and Turbo Sound sets of two or three files as one tune
+- TAYM files (`.taym`) with their timer effects: pulse-width modulation, sync-buzzer, samples
+- ZX Spectrum tracker modules, through [zxtune](https://github.com/vitamin-caig/zxtune): Pro Tracker 1–3, Vortex Tracker II, Sound Tracker and Sound Tracker Pro, ASC Sound Master, SQ-Tracker, Pro Sound Creator, Pro Sound Maker, Global Tracker and Fast Tracker, Turbo Sound modules included
+- μZX projects (`.uzx`)
 
-- **µZX Studio** — full-featured PSG music editor with timeline, instruments, and effects. Includes µZX Tuning.
-- **µZX Player** — lightweight playback for `.uzx` projects and `.psg` files with drag-drop support, file associations, and keyboard shortcuts
-- **µZX Tuning** — standalone tuning table editor for exploring chip tuning systems. (Included in µZX Studio as a built-in tool)
+Drop a file on the window, open it with **File → Open**, or double-click it in Finder. The chip is emulated with [ayumi](https://github.com/true-grue/ayumi).
 
-## Vision
+## What it shows
 
-µZX is being developed as the music subsystem of **MoTool** — a planned demotool for retrocomputer demoscene production. MoTool does not exist as a release yet; it will launch as a separate project on the shared codebase once the timeline supports video material and emulator integration. See [docs/motool/vision.md](docs/motool/vision.md) for the full picture.
+- Each channel's notes on a scrolling timeline, with the envelope and noise drawn on them; A, B and C scopes and a level meter for each chip
+- The tuning table and key the tune was written in, and its tempo, groove and meter, so the grid lines up with the tracker's rows
+- **Viz mode**: the notes and scopes alone on the whole screen, in several layouts and two colour schemes
+- **File → Render Video**: the same view as an MP4, through ffmpeg
+- **Settings → Tuning Tables**: AY note tables in equal temperament and just intonation, each note playable
 
-**Music composition:**
+## What you can change
 
-- Timeline-based arranging with tracks, clips, and automation
-- **Multiple chips** — add chip plugins to multiple tracks or load multiple PSGs to separate tracks for multi-chip compositions.
-- ChipInstrument plugin with ADSR envelopes for AY chip
-- MIDI to PSG conversion with configurable tuning systems
-- Real-time AY-3-8910/YM2149 emulation via [ayumi](https://github.com/true-grue/ayumi)
+- The chip type and clock, the stereo layout, and each channel's tone, noise, envelope, mute and solo
+- The frame rate, for a tune made for 100 or 200 Hz (see below)
+- The loop range; scrub and step the playhead frame by frame
 
-**Tuning systems:**
-
-- 12-TET, 5-Limit Just Intonation, and custom tuning tables
-- Visual tuning grid with note tooltips and scale highlighting
-- Configurable chip clock frequency and A4 reference
-- CSV export of tuning tables
-- Tuning table, key and tempo detection for imported PSG files, Turbo Sound sets as one tune
-
-**Visualization & Interaction:**
-
-- PSG clip display with notes, noise/envelope decoration, and note pitch scale
-- Integrated oscilloscope displays per AY channel with live monitoring
-- Standalone scope plugin
-- Smooth timeline scrolling and zooming with click-to-seek
-- Viz mode: full-screen notes and scopes, and File → Render Video to an MP4 through ffmpeg
+Each tune keeps its changes: open it again and they are back. **File → Save** writes them to a `.uzx` project.
 
 ## Download
 
-The Player and Studio are released separately, on the same [Releases](https://github.com/Pixel-Matter/uZX/releases) page.
-
-- **µZX Player**: take the newest [Player release](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true), tagged `player-v…`, and download `uZXPlayer-<version>-macOS.dmg`. Windows (`-windows-x64.zip`) and Linux (`-linux-x86_64.tar.gz`) builds are there too, unsigned and less tested; see [Installing on Windows](docs/user-guide.md#installing-on-windows) and [on Linux](docs/user-guide.md#installing-on-linux).
-- **µZX Studio**: releases tagged `v…`, files named `uZX-<version>-…`. Studio is a work in progress, so its releases are pre-releases.
+Take the newest [Player release](https://github.com/Pixel-Matter/uZX/releases?q=player-v&expanded=true), tagged `player-v…`, and download `uZXPlayer-<version>-macOS.dmg`. Windows (`-windows-x64.zip`) and Linux (`-linux-x86_64.tar.gz`) builds are there too, unsigned and less tested; see [Installing on Windows](docs/user-guide.md#installing-on-windows) and [on Linux](docs/user-guide.md#installing-on-linux).
 
 ### macOS Setup
 
@@ -83,18 +68,24 @@ Open the `.dmg` and drag the app to **Applications**. The app isn't notarized by
 
 ### Known Issues
 
-- **macOS: playback scrolling drops some frames on a MacBook Pro's built-in display.** On that XDR panel, at a fixed 50 Hz, about one frame in 25 reaches the screen a refresh late, so scrolling hitches now and then. Drawing a frame there takes about 10 ms, half of it macOS checking the picture for HDR content, which leaves little room before the screen's deadline. An external display is not affected. Before macOS 14 the timeline can also drop frames on other displays and in Viz mode, because there µZX can't time its frames to the screen.
-- **macOS: with two displays on, playback scrolling stutters in waves.** When the displays refresh at slightly different rates, such as an external display at 59.95 Hz beside a MacBook's panel at 60 Hz, macOS shows some frames a refresh late for a few seconds every 20 seconds or so. µZX hands every frame over on time; the stutter comes from macOS. Using a single display, for example a MacBook with its lid closed, avoids it.
+- **macOS: playback scrolling drops some frames on a MacBook Pro's built-in display.** On that XDR panel, at a fixed 50 Hz, about one frame in 25 reaches the screen a refresh late, so scrolling hitches now and then. Drawing a frame there takes about 10 ms, half of it macOS checking the picture for HDR content, which leaves little room before the screen's deadline. An external display is not affected. Before macOS 14 the timeline can also drop frames on other displays and in Viz mode, because there μZX can't time its frames to the screen.
+- **macOS: with two displays on, playback scrolling stutters in waves.** When the displays refresh at slightly different rates, such as an external display at 59.95 Hz beside a MacBook's panel at 60 Hz, macOS shows some frames a refresh late for a few seconds every 20 seconds or so. μZX hands every frame over on time; the stutter comes from macOS. Using a single display, for example a MacBook with its lid closed, avoids it.
 
 ### Tunes at 100 or 200 Hz
 
-Most `.psg` files don't record the frame rate they were written for, so µZX opens them at 50 Hz, and a tune made for 100 or 200 Hz (Atari, multi-speed players) plays two or four times too slowly. To play it at its rate:
+Most `.psg` files don't record the frame rate they were written for, so μZX opens them at 50 Hz, and a tune made for 100 or 200 Hz (Atari, multi-speed players) plays two or four times too slowly. To play it at its rate:
 
-1. Open or import the file as usual (`Cmd+O` in the Player, `Cmd+I` in Studio).
+1. Open the file as usual (`Cmd+O`).
 2. Click **fps** in the transport bar and pick the rate, such as **200 fps**. Every clip that played at the old rate follows. A tune alone in the project takes its timeline along: its tempo scales with the rate (41 BPM at 50 Hz is 164 BPM at 200 Hz), keeping its rows, groove and meter.
 3. Or right-click a clip and pick **Frame Rate** to change only that tune, all its Turbo Sound chips included.
 
 The rate stays: the Player keeps it for that tune and brings it back when you open the tune again, and a `.uzx` project keeps it too. See [Opening Files](docs/user-guide.md#opening-files) in the User Guide.
+
+## μZX Studio
+
+The Player is the first app of a larger project. **μZX Studio**, the long-term main product, is an editor for writing AY music: a timeline of tracks and clips, MIDI played through chip instruments and effects into the emulated chip, tuning systems, and multiple chips. It is an early prototype of the core and the UI, not ready for testing yet; its `v…` releases are development snapshots.
+
+μZX in turn is planned as the music subsystem of **MoTool**, a demotool for retrocomputer demoscene production. See the [Roadmap](docs/ROADMAP.md) and the [MoTool vision](docs/motool/vision.md).
 
 ## Building from Source
 
@@ -111,14 +102,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, prerequi
 
 ## Documentation
 
-- [User Guide](docs/user-guide.md) — everything in Player, Studio and Tuning, with all shortcuts
+- [User Guide](docs/user-guide.md) — everything in the Player, with all shortcuts; Studio and Tuning too
 - [Roadmap](docs/ROADMAP.md) — planned features and release milestones
 - [Design notes](docs/README.md) — tuning, PSG timing, parameter binding, and the index of all docs
 - [Vision](docs/motool/vision.md) — the initial MoTool vision and long-term direction
 
 ## Community
 
-Join the [µZX Discord](https://discord.com/channels/1103598609804562463/1357634772666552340) for support, discussion, and to connect with other users.
+Join the [μZX Discord](https://discord.com/channels/1103598609804562463/1357634772666552340) for support, discussion, and to connect with other users.
 
 ## Contributing
 

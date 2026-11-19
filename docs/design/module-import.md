@@ -2,7 +2,7 @@
 
 > **Status: plan, not implemented.** [Decisions](#decisions) says what is settled and what is a recommendation. Today a tracker module opens as a PSG clip only (`Helpers::importPsgFiles`).
 
-How µZX Studio opens a tracker module as notes: each AY channel a MIDI track with one MPE clip per order-list position, each note naming its sample and ornament through its colour, played through µZX Instrument, MIDI to PSG and one AY chip. It builds on [midi-editor.md](midi-editor.md) (an instrument per note as its colour) and [midi-ay-pipeline.md](midi-ay-pipeline.md). Code it touches: the zxtune fork's `uzx/`, `src/formats/tracker/`, `src/plugins/uZX/instrument/`, `src/plugins/uZX/midi_effects/`, `src/plugins/uZX/notes_to_psg/`, `src/models/Behavior.h`, `src/util/Helpers.*`.
+How μZX Studio opens a tracker module as notes: each AY channel a MIDI track with one MPE clip per order-list position, each note naming its sample and ornament through its colour, played through μZX Instrument, MIDI to PSG and one AY chip. It builds on [midi-editor.md](midi-editor.md) (an instrument per note as its colour) and [midi-ay-pipeline.md](midi-ay-pipeline.md). Code it touches: the zxtune fork's `uzx/`, `src/formats/tracker/`, `src/plugins/uZX/instrument/`, `src/plugins/uZX/midi_effects/`, `src/plugins/uZX/notes_to_psg/`, `src/models/Behavior.h`, `src/util/Helpers.*`.
 
 The PSG import stays as it is, and stays the only one in the Player.
 
@@ -63,9 +63,9 @@ tracks, clips, palette, chip settings, tempo grid, loop, markers
 What one chip of a module becomes in the edit:
 
 ```
-"Tune A"   MPE clips, one per position ─► µZX Instrument (voices on ch 2–5)  ─┐
-"Tune B"   MPE clips                   ─► µZX Instrument (voices on ch 6–9)  ─┤ output: Tune
-"Tune C"   MPE clips                   ─► µZX Instrument (voices on ch 10–13)─┤
+"Tune A"   MPE clips, one per position ─► μZX Instrument (voices on ch 2–5)  ─┐
+"Tune B"   MPE clips                   ─► μZX Instrument (voices on ch 6–9)  ─┤ output: Tune
+"Tune C"   MPE clips                   ─► μZX Instrument (voices on ch 10–13)─┤
 "Tune Env" plain clips on ch 16, envelope-driver notes, no devices          ─┘
 "Tune"     no clips ─► MIDI to PSG (the module's table and clock) ─► AY chip
 ```
@@ -132,7 +132,7 @@ In order. Steps 2 to 4 are useful without the import: they are step 3 of `midi-e
     - Two MPE clips that overlap on one track both play, and a note off from one at the time of the other's note on, same key and channel, does not cut the new note.
 
     If the first fails, the fallback is one track per chip with overlapping clips and an instrument that reads four zones; the plan after step 4 does not change.
-2. **Read the song.** Fork: `UzxAY::Read(data, size)` returns plain structs, no zxtune types: positions, patterns as rows of three cells (note or rest, sample, ornament, volume, commands), samples, ornaments, version, initial speed. It implements `ProTracker3::Builder` inside `uzx/`, so zxtune's own sources are not patched. µZX: `readTrackerSong` in `src/formats/tracker/TrackerSong.*` converts it to `TrackerSong`. Empty for formats without a reader, and the caller falls back to PSG.
+2. **Read the song.** Fork: `UzxAY::Read(data, size)` returns plain structs, no zxtune types: positions, patterns as rows of three cells (note or rest, sample, ornament, volume, commands), samples, ornaments, version, initial speed. It implements `ProTracker3::Builder` inside `uzx/`, so zxtune's own sources are not patched. μZX: `readTrackerSong` in `src/formats/tracker/TrackerSong.*` converts it to `TrackerSong`. Empty for formats without a reader, and the caller falls back to PSG.
 3. **The step patch.** `ChipPatch` (sample steps, ornament steps, loops, volume law) and `PatchPlayer`, the second implementation of the voice function from refactoring step 2, following `Vortex::DataRenderer`. With it:
     - `NoteVoice::periodOffset`, its controller on the note wire, and `ChipMixer` adding it after the tuning, wrapped to 12 bits as PT3 does.
     - `TuningTable` interpolates between neighbouring periods for a fractional pitch.
@@ -168,7 +168,7 @@ Two fixtures are needed that the repository lacks: a short PT3 without effect co
 - **The instrument follows PT3's rules.** Version quirks in `Vortex::DataRenderer` (the slide counter from version 7, the slide carried over from version 6) go into the patch player or the arrangement as they turn up in the fidelity test. Other formats will sound right only as far as their samples and commands fit these rules.
 - **More than 127 sample and ornament pairs** in one module: the least used share a slot with ornament 0, and the import counts them. `midi-editor.md` measured 53 pairs at the ninetieth percentile.
 - **Volume 0 with the envelope on** still sounds in PT3. A pressure of zero cannot be told from no pressure in an MPE clip, so this case is counted, not played.
-- **Clips overlap where a note is held over a pattern's end.** The engine plays that; whether µZX's timeline draws and selects overlapping clips well is not checked yet. A clip's right edge is then its last note's end, not the pattern's, and a pad held over four patterns gives a clip five patterns long.
+- **Clips overlap where a note is held over a pattern's end.** The engine plays that; whether μZX's timeline draws and selects overlapping clips well is not checked yet. A clip's right edge is then its last note's end, not the pattern's, and a pad held over four patterns gives a clip five patterns long.
 - **Fifteen voices on the note wire** are shared by three instruments, four channels each, plus the Env track. Enough for an import; a chord of more than four notes on one track would steal.
 - **Envelope offsets in sample lines** are left out until behaviour step 9. How many modules use them is unknown; step 6's counts on a set of real modules answer it.
 - **The clips are not tied to the file.** After the import the project stands alone: opening the module again imports it again.

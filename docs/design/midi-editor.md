@@ -2,7 +2,7 @@
 
 > **Status: proposal, not implemented.** [Decided](#decided) lists what is settled. Everything else is a recommendation, and [Open questions](#open-questions) lists what still needs an answer. Today Studio shows a MIDI clip's notes and cannot create a clip or edit a note.
 
-How notes are written and edited in µZX Studio, and how a note names its instrument. It builds on [midi-ay-pipeline.md](midi-ay-pipeline.md): the editor writes performance MIDI, the input of the chip instrument. Code it touches: `src/gui/timeline/`, `src/models/Behavior.h`, `src/plugins/uZX/instrument/`.
+How notes are written and edited in μZX Studio, and how a note names its instrument. It builds on [midi-ay-pipeline.md](midi-ay-pipeline.md): the editor writes performance MIDI, the input of the chip instrument. Code it touches: `src/gui/timeline/`, `src/models/Behavior.h`, `src/plugins/uZX/instrument/`.
 
 ## What makes it a chiptune editor
 
@@ -74,7 +74,7 @@ Separate editors win in general DAWs for reasons that are weaker here. A session
 ├─────────┼──────────────────────────────────────────────┤              │
 │ Bass    │ ▬▬ ▬  ▬▬▬   ▬      a short row: notes shown  │              │
 ├─────────┴──────────────────────────────────────────────┴──────────────┤
-│ Track Devices   µZX Instrument: 2 Lead  →  MIDI to PSG  →  AY chip    │
+│ Track Devices   μZX Instrument: 2 Lead  →  MIDI to PSG  →  AY chip    │
 └───────────────────────────────────────────────────────────────────────┘
 ```
 

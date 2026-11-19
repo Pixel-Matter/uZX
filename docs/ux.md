@@ -1,4 +1,4 @@
-# µZX UX
+# μZX UX
 
 Shared interaction decisions, then the yardstick for polishing the Player: a change is worth making when it takes a step out of one of these tasks or makes what the task needs easier to see.
 

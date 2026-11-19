@@ -1,6 +1,6 @@
-# µZX Development TODO
+# μZX Development TODO
 
-Granular open tasks for µZX Studio and the shared engine. Player priorities are in [ROADMAP.md](ROADMAP.md). A finished task is deleted here; what it changed for users goes to [CHANGELOG.md](../CHANGELOG.md).
+Granular open tasks for μZX Studio and the shared engine. Player priorities are in [ROADMAP.md](ROADMAP.md). A finished task is deleted here; what it changed for users goes to [CHANGELOG.md](../CHANGELOG.md).
 
 ## Refactoring
 

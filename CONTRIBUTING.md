@@ -1,6 +1,6 @@
-# Contributing to µZX
+# Contributing to μZX
 
-Thank you for your interest in contributing! µZX currently targets AY-3-8910/YM2149-based platforms (ZX Spectrum, Amstrad CPC, MSX, Atari ST, etc.), but the architecture is designed to support additional sound chips in the future. This guide will help you get started.
+Thank you for your interest in contributing! μZX currently targets AY-3-8910/YM2149-based platforms (ZX Spectrum, Amstrad CPC, MSX, Atari ST, etc.), but the architecture is designed to support additional sound chips in the future. This guide will help you get started.
 
 ## Building from Source
 
@@ -141,8 +141,8 @@ Releases are triggered by pushing a tag. Each app ships from its own tags and ha
 
 | App | Tag | Version variable |
 |-----|-----|------------------|
-| µZX Studio | `v*` (e.g. `v0.7.0-alpha`) | `PROJECT_CORE_VERSION` |
-| µZX Player | `player-v*` (e.g. `player-v1.0.0`) | `UZX_PLAYER_VERSION` |
+| μZX Studio | `v*` (e.g. `v0.7.0-alpha`) | `PROJECT_CORE_VERSION` |
+| μZX Player | `player-v*` (e.g. `player-v1.0.0`) | `UZX_PLAYER_VERSION` |
 
 The flows below show Studio; for Player, bump `UZX_PLAYER_VERSION` and prefix the tag with `player-`.
 

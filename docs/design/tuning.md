@@ -1,6 +1,6 @@
 # Tuning systems
 
-Background on tuning for the AY chip, then how µZX models, detects and applies tunings. For the user-facing side see **µZX Tuning** and the **Tuning table and key** paragraph in the [user guide](../user-guide.md); for the just-intonation argument in full, [Playing music on AY chip like on a digital flute](just-intonation-on-ay.md).
+Background on tuning for the AY chip, then how μZX models, detects and applies tunings. For the user-facing side see **μZX Tuning** and the **Tuning table and key** paragraph in the [user guide](../user-guide.md); for the just-intonation argument in full, [Playing music on AY chip like on a digital flute](just-intonation-on-ay.md).
 
 ## Background
 
@@ -90,7 +90,7 @@ Everything is under `src/models/tuning/`; each class has an adjacent `*.test.cpp
 ### Where a tuning is used
 
 - **MIDI → PSG:** `NotesToPsgMapper` holds a `TuningSystem` and asks it for the period of every note (a `double`, so slides and pitch bend work).
-- **µZX Tuning:** `TuningViewModel` builds a tuning from `TuningOptions` (table, system, tonic, scale, clock, A4) and feeds the grid, the preview player and CSV export.
+- **μZX Tuning:** `TuningViewModel` builds a tuning from `TuningOptions` (table, system, tonic, scale, clock, A4) and feeds the grid, the preview player and CSV export.
 - **PSG clips:** the Notes view places periods on the pitch axis through the clip's tuning, `PsgClip::getTuning()`.
 
 ### Detection on PSG clips

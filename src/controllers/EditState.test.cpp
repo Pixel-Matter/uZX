@@ -517,7 +517,10 @@ public:
             zoom.advanceFrame(1.0);
             const auto latched = playhead();
             expectGreaterOrEqual(latched, heard() - 0.02);
-            expectLessThan(latched, heard() + 0.1);  // ahead by a frame or so, for the display
+            // Ahead by a frame for the display, and by the wall time since the last report: the clock runs on
+            // for up to maxExtrapolationMs, while this test renders the audio by hand, not in real time
+            expectLessThan(latched, heard() + PlayheadClock::maxExtrapolationMs / 1000.0
+                                        + ZoomViewState::frameLead / 60.0 + 0.01);
             expectGreaterThan(listener.calls, 0, "dispatched inside the frame, not later");
             expectLessThan(zoom.getStart().inSeconds(), latched, "the view follows the frame's playhead");
             TestHelpers::processBlocks(engine, 2);

@@ -30,6 +30,8 @@ jobs:
           # The page's own address, and "Improve this page" edits develop, where changes go
           cat > site/_config.yml <<'YAML'
           title: μZX Player
+          # The home page's title adds it, so short; else it is the repo's long description
+          description: Plays AY-3-8910 / YM2149 chip music and shows what the chip plays
           url: https://pixelmatter.org
           baseurl: /uZX
           github:

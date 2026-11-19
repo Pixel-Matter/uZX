@@ -219,6 +219,8 @@ The numeric part of the tag must match the app's version in `versions.cmake`.
 | Push to `main` or `develop` | Build + test on all platforms |
 | PR to `main` or `develop` | Build + test on all platforms |
 | Tag push (`v*` / `player-v*`) | Create a draft GitHub Release, build + test + package + upload Studio / Player on all platforms, then wait for approval to generate SHA256SUMS.txt and publish |
+| Player release published | Deploy the tag's README and `docs/` to [pixelmatter.org/uZX](https://pixelmatter.org/uZX) (`pages.yml`); run it by hand from **Actions → Pages** for a docs fix between releases |
+| PR touching `*.md` or `docs/` | Build that site, so a page Jekyll can't render fails the PR |
 
 ### Testing a Release Before It's Public
 

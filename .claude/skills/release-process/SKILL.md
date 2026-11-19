@@ -73,6 +73,7 @@ Triggers regardless of which branch the tag points to.
    - Publishes the release (removes draft status)
 
    Until approved, the release is a draft only maintainers can see: the user downloads and tests its files there.
+4. **`pages`** — For `player-v*` only, once the release is published: runs `.github/workflows/pages.yml`, which deploys the tag's README and `docs/` to pixelmatter.org/uZX. Run that workflow by hand (`gh workflow run pages.yml --ref develop`) to publish a docs fix between releases.
 
 ### Concurrency
 - Branch runs are auto-cancelled when superseded

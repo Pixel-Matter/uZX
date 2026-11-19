@@ -1,0 +1,53 @@
+name: Pages
+
+# pixelmatter.org/uZX: the README and docs/ as Jekyll pages. CI deploys them when a Player release is published;
+# run this by hand to publish a docs fix between releases. PRs that touch the docs only build them.
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, develop]
+    paths: ['*.md', 'docs/**', '.github/workflows/pages.yml']
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4  # no submodules: only the docs are published
+
+      - name: Stage the README and docs
+        run: |
+          mkdir site
+          cp README.md CHANGELOG.md CONTRIBUTING.md AUTHOR.md LICENCE.md AGENTS.md site/
+          cp -r docs site/
+          printf 'title: μZX\nbaseurl: /uZX\n' > site/_config.yml
+          # Links to code and test files, which aren't published, go to GitHub at this commit
+          sed -i -E "s#\]\(\.\./(src|tests)/#](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/\1/#g" site/docs/*.md
+
+      - uses: actions/jekyll-build-pages@v1
+        with:
+          source: site
+          destination: _site
+
+      - uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency: pages
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

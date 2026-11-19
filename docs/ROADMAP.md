@@ -31,7 +31,7 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
 - [ ] **UX quality review** — open findings in [ux-review.md](ux-review.md); review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
 - [ ] Good human proof-read **user guide** and readme, including new animated gif
-- [ ] **PixelMatter.org/uZX** page, synced on releases
+- [x] **PixelMatter.org/uZX** page, synced on releases — the README and `docs/`, deployed by CI when a Player release is published (`.github/workflows/pages.yml`)
 - [ ] **Release notes** — CHANGELOG entry for the tag
 
 #### P1 — Important

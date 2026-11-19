@@ -9,6 +9,7 @@ runs:
       # A mirror outage makes apt retry for over an hour; fail in minutes instead
       run: |
         sudo timeout 5m apt-get update -q
+        # No libwebkit2gtk: the app builds with JUCE_WEB_BROWSER=0, and its 100-odd packages timed this out
         sudo timeout 10m apt-get install -y \
           libasound2-dev \
           libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
@@ -17,5 +18,4 @@ runs:
           libgl1-mesa-dev libglu1-mesa-dev \
           libglib2.0-dev \
           libjack-jackd2-dev \
-          libcurl4-openssl-dev \
-          libwebkit2gtk-4.1-dev
+          libcurl4-openssl-dev

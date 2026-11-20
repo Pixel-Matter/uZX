@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include "../common/LookAndFeel.h"
+
 #include "ClipComponents.h"
 #include "TimelineGrid.h"
 
@@ -124,16 +126,16 @@ public:
     void setDividerHeight(int height);
 
     static constexpr int resizerHeight = 2;        // Studio's divider
-    static constexpr int playerDividerHeight = 8;  // the Player's and Viz mode's, on their 8 px grid
+    static constexpr int playerDividerHeight = Space::margin;  // the Player's and Viz mode's, between panels
 
     TrackHeaderComponent header;
     TrackBodyComponent body;
     /** The track's devices, fixed, when the view shows footers; in Viz mode its chip's scopes. */
     std::unique_ptr<Component> footer;
     /** The track's full height, as its notes, apart from them and from the window edge. */
-    static inline const BorderSize<int> footerPadding {0, 8, 0, 8};
+    static inline const BorderSize<int> footerPadding {0, Space::margin, 0, Space::margin};
     /** Scopes under the notes: below the gap to drag, to the row's bottom, apart from the window edge. */
-    static inline const BorderSize<int> scopesBandPadding {8, 0, 0, 8};
+    static inline const BorderSize<int> scopesBandPadding {Space::margin, 0, 0, Space::margin};
 
 private:
     /** Takes the footer's area from the row's: the devices, or Viz mode's scopes beside, under or

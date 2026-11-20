@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include "../../../gui/common/LookAndFeel.h"
+
 #include "AYPlugin.h"
 #include "../../../gui/common/ChoiceButton.h"
 #include "../../../gui/common/ToggleButton.h"
@@ -34,7 +36,7 @@ public:
     void paintOverChildren(Graphics& g) override;
     void resized() override;
 
-    static constexpr int spacing = 4;
+    static constexpr int spacing = Space::tight;  // between the channels' scopes, as between their toggles
 
     /** Where channel `chan`'s timer sign is drawn, in this component's coordinates. */
     Rectangle<int> getTimerSignBounds(size_t chan) const;

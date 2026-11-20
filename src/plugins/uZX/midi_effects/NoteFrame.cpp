@@ -22,7 +22,7 @@ void sendControllers(const NoteVoice& before, const NoteVoice& now, int channel,
     sendIfChanged(NoteCC::Envelope, onOff(before.timbre.envelope), onOff(now.timbre.envelope));
     sendIfChanged(NoteCC::EnvelopeDriver, onOff(before.timbre.drivesEnvelope), onOff(now.timbre.drivesEnvelope));
     const auto shapeOf = [](const NoteVoice& voice) {
-        return stepToController(voice.timbre.envelopeShape.asUnderlying(), static_cast<int>(EnvelopeShape::size()));
+        return stepToController(static_cast<int>(voice.timbre.envelopeShape), static_cast<int>(EnvelopeShape::size()));
     };
     sendIfChanged(NoteCC::EnvelopeShape, shapeOf(before), shapeOf(now));
     sendIfChanged(NoteCC::NoisePeriod, stepToController(before.timbre.noisePeriod, numNoisePeriods),
@@ -126,7 +126,7 @@ bool NoteControllers::decode(const juce::MidiMessage& m) noexcept {
             chan.timbre.envelope = on;
             break;
         case NoteCC::EnvelopeShape:
-            chan.timbre.envelopeShape = controllerToStep(value, static_cast<int>(EnvelopeShape::size()));
+            chan.timbre.envelopeShape = EnvelopeShape(controllerToStep(value, static_cast<int>(EnvelopeShape::size())));
             break;
         case NoteCC::EnvelopeRestart:
             chan.restartEnvelope = chan.restartEnvelope || on;

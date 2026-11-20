@@ -1,6 +1,6 @@
 # A Strudel live editor for AY/YM
 
-**Status: proposal, not implemented.** Build a browser instrument that shares its musical model with native uZX. A musician edits a Strudel pattern while it plays and can follow a note from a line of code to the physical channel that sounds it. The first playable example uses one chip, two named instruments and a scrolling piano roll.
+**Status: shared voice allocation implemented. Browser instrument proposed.** Build a browser instrument that shares its musical model with native uZX. A musician edits a Strudel pattern while it plays and can follow a note from a line of code to the physical channel that sounds it. The first playable example uses one chip, two named instruments and a scrolling piano roll.
 
 ## Ownership of the signal path
 
@@ -41,6 +41,22 @@ Keep these JUCE types where the shared model benefits from them. Before dependin
 Give the piano roll and chip lanes one horizontal time axis and one playhead anchored to the audio output clock. Color by instrument throughout. Draw scheduled pitch and duration ahead of the cursor. Behind it, draw fractional pitch and level from the rendered note frames, including voices that lost allocation. Use separate styling for an unallocated voice so a held score note remains legible when it loses its channel. Keep the roll usable with the chip lanes collapsed.
 
 The trace carries generation, sample frame, voice occurrence, instrument, pitch and level, plus the owners of A/B/C, noise and envelope and any envelope restart. Record silence and owner changes even when two owners yield identical register values. The UI can associate an occurrence with its Strudel source span when available. Transfer batches from the worklet at display cadence and draw from bounded history. Observe the trace at the output playhead so buffered future audio does not appear as already heard. [Native PSG visualization conventions](../psg-visualization.md)
+
+## Running the shared allocator
+
+The desktop mapper uses the same [allocator](../../src/chip/ChipAllocator.h) as the standalone target. It accepts one bounded note frame and returns the voices assigned to A/B/C, noise and envelope. The result refers to the supplied frame. Consume or copy the ownership information before modifying or discarding the frame. Tuning and PSG rendering still run in the desktop mapper.
+
+From the repository root, run the allocation fixture with a C++23 compiler, then with an activated Emscripten SDK and Node.js:
+
+```sh
+cmake -S src/chip -B build/chip-native
+cmake --build build/chip-native --parallel
+ctest --test-dir build/chip-native --output-on-failure
+
+emcmake cmake -S src/chip -B build/chip-wasm
+cmake --build build/chip-wasm --parallel
+ctest --test-dir build/chip-wasm --output-on-failure
+```
 
 ## Implementation order and acceptance
 

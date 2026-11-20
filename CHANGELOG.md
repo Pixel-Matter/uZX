@@ -110,6 +110,7 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 - Buttons in a row of controls, such as **Choose...** in Render Video and **Test** in the audio settings, have text no larger than the labels beside them; a dialog's actions and the AY channels' letters stay large
 - The Registers view shows its hex values in Iosevka Fixed, so two digits fit a frame
 - Spacing follows one 4 px grid, wider the less two things belong together: the PSG hover and tooltips have a little more room around their text, and Studio's track buttons stand apart like the rest
+- Render Video, Audio Settings, Tuning, About, Update and the progress window share one margin, row height and button size, and their labels and tick boxes are the size of the rest of the text
 
 ## [v0.7.1-alpha, player-v0.7.1-alpha] - 2026-11-15
 

@@ -98,10 +98,13 @@ TuningPickerComponent::TuningPickerComponent(PsgClip& clip)
             c->clearTuningChoice();
     };
 
+    // This window is modal: it would stay in front of the Tuning window and keep its clicks, so it closes first
     tablesButton_.onClick = [this] {
-        if (auto* c = clip_.get())
-            if (auto* manager = c->edit.engine.getUIBehaviour().getApplicationCommandManager())
-                manager->invokeDirectly(Commands::MainAppCommands::settingsTuningTables, true);
+        auto* c = clip_.get();
+        auto* manager = c != nullptr ? c->edit.engine.getUIBehaviour().getApplicationCommandManager() : nullptr;
+        close();
+        if (manager != nullptr)
+            manager->invokeDirectly(Commands::MainAppCommands::settingsTuningTables, true);
     };
 
     for (auto* c : std::initializer_list<Component*>{

@@ -105,7 +105,7 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 - Tuning Tables: a sharp note's name tints toward the app's blue and a flat one's toward its red, where they were pure blue and red
 - Fixed: Tuning Tables tinted a note up to 5 cents flat red, though one up to 5 cents sharp stayed untinted
 - Studio: the hint of an empty devices panel and the Plugins window's background are in the app's colours
-- All text is in the app's own fonts: the PSG hover is in Iosevka Fixed, where it was in the system's Menlo, and the ♭ ♮ ♯ of key and scale names are in Inter, where they came from a system font
+- All text is in the app's own fonts: the PSG hover is in Iosevka Fixed and a little larger, where it was in the system's Menlo, and the ♭ ♮ ♯ of key and scale names are in Inter, where they came from a system font
 
 ## [v0.7.1-alpha, player-v0.7.1-alpha] - 2026-11-15
 

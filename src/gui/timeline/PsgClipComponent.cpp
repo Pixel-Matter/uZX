@@ -660,7 +660,8 @@ public:
     }
 
     void setText(const std::vector<std::pair<String, Colour>>& runs) {
-        const Font font(FontOptions(Font::getDefaultMonospacedFontName(), 12.0f, Font::plain));
+        // Iosevka Fixed at the height of body text; 11.75 keeps its edges sharp on Retina screens
+        const Font font(FontOptions(Font::getDefaultMonospacedFontName(), 12.0f, Font::plain).withPointHeight(11.75f));
         AttributedString text;
         for (const auto& [run, colour] : runs)
             text.append(run, font, colour);

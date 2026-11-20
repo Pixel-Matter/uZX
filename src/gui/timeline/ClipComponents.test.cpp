@@ -51,7 +51,7 @@ public:
                 colours.add(PsgClip::colourForTrackIndex(i));
             for (const auto colour : colours)
                 for (const bool selected : {false, true})
-                    expect(contrast(ClipHeader::getFill(colour, selected).overlaidWith(ClipHeader::textColour),
+                    expect(contrast(ClipHeader::getFill(colour, selected).overlaidWith(Colors::Theme::dark),
                                     ClipHeader::getFill(colour, selected)) >= 4.5f,
                            colour.toDisplayString(false) + (selected ? " selected" : " unselected"));
         }

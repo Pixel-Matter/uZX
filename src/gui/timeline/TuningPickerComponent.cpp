@@ -28,7 +28,7 @@ public:
     void paint(Graphics& g) override {
         auto area = getLocalBounds().toFloat();
         auto labels = area.removeFromBottom(14.0f);
-        g.setColour(Colours::black.withAlpha(0.3f));
+        g.setColour(Colors::Theme::dark.withAlpha(0.3f));
         g.fillRoundedRectangle(area, 3.0f);
         if (bins_.empty())
             return;
@@ -39,9 +39,9 @@ public:
             const float x = area.getX() + static_cast<float>(pc * binsPerSemitone) * binWidth + binWidth * 0.5f;
             const bool isTonic = pc == tonic_;
             const bool inKey = inKey_[static_cast<size_t>(pc)];
-            g.setColour(Colours::white.withAlpha(isTonic ? 0.7f : inKey ? 0.4f : 0.1f));
+            g.setColour(Colors::Theme::light.withAlpha(isTonic ? 0.7f : inKey ? 0.4f : 0.1f));
             g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
-            g.setColour(Colours::white.withAlpha(isTonic ? 0.95f : inKey ? 0.75f : 0.3f));
+            g.setColour(Colors::Theme::light.withAlpha(isTonic ? 0.95f : inKey ? 0.75f : 0.3f));
             g.drawText(String::fromUTF8(Scale::Tonic(pc).getLongLabel().data()),
                        Rectangle<float>(x - 12.0f, labels.getY(), 24.0f, labels.getHeight()),
                        Justification::centred,
@@ -53,7 +53,7 @@ public:
                 continue;
             const float x = area.getX() + static_cast<float>(i) * binWidth;
             const bool onGrid = i % binsPerSemitone == 0;
-            g.setColour((onGrid ? Colours::white : Colors::Theme::warning).withAlpha(0.85f));
+            g.setColour((onGrid ? Colors::Theme::light : Colors::Theme::warning).withAlpha(0.85f));
             g.fillRect(x + 0.5f, area.getBottom() - 2.0f - h, jmax(1.0f, binWidth - 1.0f), h);
         }
     }

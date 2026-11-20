@@ -27,7 +27,7 @@ private:
 
     juce::String text_;
     juce::Font font_ { juce::FontOptions(14.0f, juce::Font::plain) };
-    juce::Colour colour_ { juce::Colours::white };
+    juce::Colour colour_ { Colors::Theme::textPrimary };
     juce::Justification justification_ { juce::Justification::centred };
     float lineSpacingFactor_ { 1.0f };
     juce::BorderSize<int> contentPadding_;

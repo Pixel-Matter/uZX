@@ -67,9 +67,8 @@ public:
 
     static constexpr int height = 18;
 
-    /** The clip's colour at a lightness on which textColour reads, lighter when selected. */
+    /** The clip's colour at a lightness on which Colors::Theme::dark text reads, lighter when selected. */
     static Colour getFill(Colour clipColour, bool selected);
-    inline static const Colour textColour {0xff000000};  // not Colours::black, initialised in another file
 
     /** Which parts fit a header row of width, each item's width with the gap before it:
         the name keeps up to 48 px of its width; the legend goes first, then the items,

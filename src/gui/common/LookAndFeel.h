@@ -96,6 +96,11 @@ struct Theme {
     inline static const Colour textSecondary = Palette::slate400;  // Secondary text
     inline static const Colour textDisabled  = Palette::slate500;  // Disabled text
 
+    // The neutral extremes, for what is drawn over the accents and the dark lanes; callers set the alpha.
+    // Literal values: copying juce::Colours here could run before they are set up
+    inline static const Colour light = Colour(0xffffffff);  // marks and text on the lanes, white keys
+    inline static const Colour dark  = Colour(0xff000000);  // text on accent fills, black keys, shadows
+
     // Border and separator colors
     inline static const Colour borderLight   = Palette::slate500;  // Lighter borders
     inline static const Colour border        = Palette::slate600;  // Normal borders

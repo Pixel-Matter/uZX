@@ -1089,7 +1089,7 @@ void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
                 const auto hexValue = String::toHexString(value).paddedLeft('0', 2).toUpperCase();
                 g.setColour(color);
                 g.fillRect(x, y, width, laneHeight);
-                g.setColour(Colours::black);
+                g.setColour(Colors::Theme::dark);
                 g.drawText(hexValue, Rectangle<float>(x, y, width, laneHeight), Justification::centred);
             } else {
                 const auto brightness = static_cast<float>(value) / 255.0f;
@@ -1689,7 +1689,7 @@ void paintPsgLegend(Graphics& g, Rectangle<int> area) {
                                     (float) swatch.getWidth(), (float) swatch.getHeight(),
                                     0x8, item.color.brighter(0.8f).withAlpha(0.85f), (float) swatch.getX());
         }
-        g.setColour(item.style == LegendStyle::Noise ? Colours::white : Colours::black);
+        g.setColour(item.style == LegendStyle::Noise ? Colors::Theme::light : Colors::Theme::dark);
         g.drawText(item.label, swatch, Justification::centred);
     });
 }

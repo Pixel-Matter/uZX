@@ -126,7 +126,7 @@ int ClipHeader::getWarningWidth(const String& warning) {
 void ClipHeader::paintWarning(Graphics& g, Rectangle<int> area, const String& warning) {
     g.setColour(Colors::Theme::warning.withAlpha(0.9f));
     g.fillRoundedRectangle(area.toFloat(), 2.0f);
-    g.setColour(Colours::black);
+    g.setColour(Colors::Theme::dark);
     g.setFont(getHeaderFont());
     g.drawText(warning, area.reduced(pad, 0), Justification::centred, true);
 }
@@ -171,7 +171,7 @@ void ClipHeader::paint(Graphics& g) {
     int itemsWidth = 0;
     for (size_t i = 0; i < fitted.items; ++i)
         itemsWidth += itemWidths[i];
-    g.setColour(textColour);
+    g.setColour(Colors::Theme::dark);
     g.setFont(nameFont);
     const auto nameArea = row.removeFromLeft(jmin(nameWidth, row.getWidth() - itemsWidth));
     g.drawText(name, nameArea, Justification::centredLeft, true);
@@ -183,7 +183,7 @@ void ClipHeader::paint(Graphics& g) {
         if (i < (size_t) warnings.size()) {
             paintWarning(g, area, warnings[(int) i]);
         } else {
-            g.setColour(textColour);
+            g.setColour(Colors::Theme::dark);
             g.drawText(info, area, Justification::centredLeft, true);
         }
     }
@@ -207,7 +207,7 @@ void AudioClipComponent::paint(Graphics& g) {
 
     if (thumbnail != nullptr)
         drawWaveform(
-            g, *getWaveAudioClip(), *thumbnail, Colours::white.withAlpha(0.5f), getX(), getRight(), 0, getHeight(), 0);
+            g, *getWaveAudioClip(), *thumbnail, Colors::Theme::light.withAlpha(0.5f), getX(), getRight(), 0, getHeight(), 0);
 }
 
 void AudioClipComponent::drawWaveform(Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour,
@@ -372,7 +372,7 @@ void MidiClipComponent::paint(Graphics& g) {
         // Map note position in the visible range (inverted since y=0 is at top)
         float y1 = (r.getHeight() - (noteNumber - minNote) * noteH);
 
-        g.setColour(Colours::white.withAlpha(static_cast<float>(n->getVelocity()) / 127.0f));
+        g.setColour(Colors::Theme::light.withAlpha(static_cast<float>(n->getVelocity()) / 127.0f));
         g.fillRect(t1, y1, t2 - t1, noteH);
     }
 }
@@ -401,11 +401,7 @@ void RecordingClipComponent::initialiseThumbnailAndPunchTime()
 
 void RecordingClipComponent::paint(Graphics& g) {
     g.fillAll(Colors::Theme::error.withAlpha(0.5f));
-    // no outline
-    // g.setColour(Colours::black);
-    // g.drawRect(getLocalBounds());
-
-    drawThumbnail(g, Colours::black.withAlpha(0.5f));
+    drawThumbnail(g, Colors::Theme::dark.withAlpha(0.5f));
 }
 
 void RecordingClipComponent::drawThumbnail(Graphics& g, Colour waveformColour) const {

@@ -13,7 +13,9 @@ namespace MoTool {
  */
 class ComboBoxWithOverrideId : public juce::ComboBox {
 public:
-    ComboBoxWithOverrideId() = default;
+    ComboBoxWithOverrideId() {
+        setWantsKeyboardFocus(false);  // else after a pick with the mouse, the arrows change it
+    }
 
     // Hide base class methods to intercept calls and auto-manage override
     void setText(const juce::String& newText, juce::NotificationType notification = juce::sendNotification) {

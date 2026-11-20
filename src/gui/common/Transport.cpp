@@ -38,6 +38,33 @@ void EditableReadout::commitEditedText() {
 }
 
 
+void MenuReadout::showMenu() {
+    if (onShowMenu)
+        onShowMenu();
+}
+
+void MenuReadout::mouseDown(const MouseEvent&) {
+    showMenu();
+}
+
+std::unique_ptr<AccessibilityHandler> MenuReadout::createAccessibilityHandler() {
+    // A pop-up button that reads like the other readouts: its value, what it is, then its tooltip
+    struct Handler : AccessibilityHandler
+    {
+        explicit Handler(MenuReadout& r)
+            : AccessibilityHandler(r, AccessibilityRole::comboBox,
+                                   AccessibilityActions()
+                                       .addAction(AccessibilityActionType::press, [&r] { r.showMenu(); })
+                                       .addAction(AccessibilityActionType::showMenu, [&r] { r.showMenu(); })),
+              readout(r) {}
+        String getTitle() const override { return readout.getText(); }
+        String getHelp() const override { return readout.getTooltip(); }
+        MenuReadout& readout;
+    };
+    return std::make_unique<Handler>(*this);
+}
+
+
 /** Where `label` puts its text's baseline, from its top, as LookAndFeel_V2::drawLabel lays the text out. */
 static float getTextBaseline(Label& label) {
     auto& lf = label.getLookAndFeel();
@@ -123,6 +150,8 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     }
 
     if (options_.showAutomation) {
+        for (auto* button : {&autoReadButton_, &autoWriteButton_})
+            button->setWantsKeyboardFocus(false);  // the keys stay with playback and the commands (docs/ux.md)
         autoReadButton_.setClickingTogglesState(true);
         autoReadButton_.onClick = [this] {
             auto& arm = edit_.getAutomationRecordManager();
@@ -207,7 +236,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 
     // The fps readout picks from a fixed set of rates via a popup, not free text.
     fpsLabel_.setEditable(false, false, false);
-    fpsLabel_.addMouseListener(this, false);
+    fpsLabel_.onShowMenu = [this] { showFpsMenu(); };
 
     updateTimeLabels(transport_.getPosition());
 
@@ -221,8 +250,6 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
 }
 
 TransportBar::~TransportBar() {
-    fpsLabel_.removeMouseListener(this);
-
     viewState_.zoom.removeListener(this);
     transport_.removeChangeListener(this);
     transport_.state.removeListener(this);
@@ -452,11 +479,6 @@ void TransportBar::commitEditedTimeSig() {
     if (const auto parsed = Helpers::parseTimeSig(timeSigLabel_.getText(), timeSig.denominator.get()))
         PsgTiming::setTimeSig(edit_, timeSig, parsed->first, parsed->second);
     updateTimeLabels(transport_.getPosition());  // shows the result, or restores the old one
-}
-
-void TransportBar::mouseDown(const MouseEvent& e) {
-    if (e.eventComponent == &fpsLabel_)
-        showFpsMenu();
 }
 
 void TransportBar::showFpsMenu() {

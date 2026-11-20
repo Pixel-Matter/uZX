@@ -69,6 +69,7 @@ TrackDevicesPanel::TrackDevicesPanel(EditViewState& evs, bool editable)
 {
     viewport.setViewedComponent(&content, false);
     viewport.setScrollBarsShown(false, true);
+    viewport.setWantsKeyboardFocus(false);  // the arrows step the playhead, not scroll
 
     addAndMakeVisible(viewport);
 }

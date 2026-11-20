@@ -58,7 +58,9 @@ private:
 
     class ZoomableViewport : public Viewport {
     public:
-        ZoomableViewport(EditViewState& evs) : editViewState(evs) {}
+        ZoomableViewport(EditViewState& evs) : editViewState(evs) {
+            setWantsKeyboardFocus(false);  // the arrows step the playhead, not scroll
+        }
         void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
         void mouseMagnify(const MouseEvent& e, float scale) override;
         bool fittedTracks = false;  // the tracks fit the height, and scroll only when they can't

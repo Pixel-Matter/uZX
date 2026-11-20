@@ -155,6 +155,33 @@ private:
         expect(!edit->getUndoManager().canUndo());
         EditViewState studioView(*edit, selectionManager);
         expectEquals(studioView.getTrackHeaderWidth(), EditViewState::minHeadersWidth);
+
+        beginTest("The Player's track header is hidden, and no track button or viewport takes the keys");
+        {
+            EditViewState playerView(*edit, selectionManager);
+            playerView.showHeaders = false;
+            playerView.showFooters = true;
+            EditComponent player(*edit, playerView, {.showDetailsPanel = false, .autoFitTrackHeights = true});
+            player.setSize(1000, 400);
+            TestHelpers::flushMessageQueue();
+            auto* header = findDescendant<TrackHeaderComponent>(player);
+            expect(header != nullptr && ! header->isVisible(), "its name and buttons stay out of the accessibility tree");
+
+            EditComponent studio(*edit, studioView, {.showDetailsPanel = false});
+            studio.setSize(1000, 400);
+            TestHelpers::flushMessageQueue();
+            int buttons = 0;
+            for (auto* root : {(Component*) &player, (Component*) &studio})
+                for (auto* c : KeyboardFocusTraverser().getAllComponents(root)) {
+                    expect(dynamic_cast<Button*>(c) == nullptr, "a button: " + c->getName());
+                    expect(dynamic_cast<Viewport*>(c) == nullptr, "a viewport");
+                }
+            if (auto* studioHeader = findDescendant<TrackHeaderComponent>(studio))
+                for (auto* c : studioHeader->getChildren())
+                    if (dynamic_cast<Button*>(c) != nullptr)
+                        ++buttons;
+            expect(buttons >= 3, "M, S and I are there");
+        }
     }
 
     void runLoopLinesTests(te::Engine& engine) {

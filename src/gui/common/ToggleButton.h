@@ -16,6 +16,7 @@ public:
         : binding(*this, makeResolveParamEndpoint(plugin, value), value.definition.shortLabel)
     {
         binding.midiMapping.addChangeListener(this);
+        setWantsKeyboardFocus(false);  // the keys stay with playback and the commands (docs/ux.md)
     }
 
     ~ToggleButton() override {

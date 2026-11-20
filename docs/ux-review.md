@@ -9,11 +9,3 @@ Not covered yet: a release build run on macOS (Gatekeeper, the DMG, Finder assoc
 | # | Finding | Where | Suggested fix |
 | --- | --- | --- | --- |
 | M7 | **Tab does not reach the transport or chip controls.** Screen readers now name the readouts, knobs, scopes and meters, and no text to read is below 4.5:1. Left: no control takes Tab focus, and the look-and-feel draws no focus ring. A focused knob or button would also take the arrows and Space the Player steps and plays with. | `src/gui/common/Transport.cpp`, `src/plugins/uZX/aychip/AYPluginEditor.cpp`, `src/gui/common/LookAndFeel.cpp` | Focus by Tab only (`setMouseClickGrabsKeyboardFocus(false)`), a focus ring in the look-and-feel, and Escape to give the keys back to the transport. |
-
-## Docs and README
-
-Left: a link only the server's owner can make.
-
-| # | Finding | Where | Suggested fix |
-| --- | --- | --- | --- |
-| D6 | **The Discord link is a channel URL**, which opens only for people already in the server. | `README.md` | Use an invite link. |

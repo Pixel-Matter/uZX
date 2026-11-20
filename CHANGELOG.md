@@ -4,6 +4,9 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 
 ## [Unreleased]
 
+### Community
+- Fixed: the README's Discord link and the issue form's support link opened only for people already in the server; they are an invite link
+
 ### Download
 - Linux: the download is a folder with the app as `uzx-player` or `uzx-studio`, its menu entry and icon, and `install.sh`, which adds it to the applications menu, where it was a single binary named `μZX Player`
 

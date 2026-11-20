@@ -99,6 +99,7 @@ set_target_properties(${TEST_TARGET_NAME} PROPERTIES
 )
 
 include(sources.cmake)
+add_subdirectory(chip)
 
 add_library(motool_common STATIC)
 target_sources(motool_common PRIVATE
@@ -107,7 +108,7 @@ target_sources(motool_common PRIVATE
 )
 target_compile_features(motool_common PUBLIC cxx_std_23)
 # Tracker module import: only zxtune's uzx/ay_module.h is visible here.
-target_link_libraries(motool_common PRIVATE zxtune_aym)
+target_link_libraries(motool_common PRIVATE zxtune_aym uzx_chip)
 # TAYM: its headers are in the models' and the AY chip's own, so everything that includes those sees them.
 target_link_libraries(motool_common PUBLIC taym)
 target_include_directories(motool_common

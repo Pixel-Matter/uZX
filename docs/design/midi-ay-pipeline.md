@@ -60,7 +60,7 @@ MIDI in ─► decoder ─► NoteFrame ─► logic ─► NoteFrame ─► enc
 
 The decoder and encoder own everything that is about MIDI: held notes and their note-offs, per-note pitch and level, controller values, all-notes-off, transport jumps and resets, frame boundaries, what was last sent, and sending on a block with no input. After a reset or a jump the encoder forgets what it sent, so the next frame goes out whole.
 
-`NoteFrame`, `NoteVoice`, `NoteEncoder` and `NoteDecoder` are in `src/plugins/uZX/midi_effects/NoteFrame.*`; `PsgEncoder`, which remembers what the chip was last sent, is in `src/models/PsgCC.*`. Two stages have this shape today:
+`NoteFrame` and `NoteVoice` live in `src/chip/NoteFrame.h`. Their MIDI codecs `NoteEncoder` and `NoteDecoder` live in `src/plugins/uZX/midi_effects/NoteFrame.*`; `PsgEncoder`, which remembers what the chip was last sent, is in `src/models/PsgCC.*`. Two stages have this shape today:
 
 - `MPEInstrumentFx`, an instrument, whose input is performance MIDI: JUCE's `MPEInstrument` and `VoiceManager` decode the notes, each voice's `renderFrame` adds itself to the frame, `NoteControllers` gives each voice the timbre, pan and priority of the channel it was played on, and `NoteEncoder` sends what changed.
 - `NotesToPsgMapper`, the mixer: `NoteDecoder` reads the stream, `ChipMixer` turns a frame into the chip's parameters, and `PsgEncoder` sends what changed.
@@ -91,7 +91,7 @@ The mixer takes the chip-note stream on all channels and produces one `PsgPatch`
 - **Pitch.** The tuning turns a voice's pitch into a tone period, or an envelope period for the voice that drives the envelope, at the clock of the chip the mixer plays on. A voice's pitch is the pitch that sounds: a triangle takes two of the envelope's periods to repeat, so the tuning has a period mode for it (`TuningSystem::EnvelopeTriangle`, picked by `envelopePeriodMode` in `EnvelopeShape.h`) that gives half a sawtooth's period.
 - **Timbre.** The voice's timbre fields become the tone, noise and envelope switches. The voice that drives the envelope gives the envelope shape in every frame and the retrigger only when it asks for a restart: a note can start, move the envelope's pitch or last with the envelope running on.
 
-`ChipMixer` in `src/plugins/uZX/notes_to_psg/NotesToPsgMapper.*` is this logic; its only state is which voice had which chip channel. A chip channel without a voice gets volume 0 and its envelope off. After an all-notes-off, a reset or a move to other MIDI channels the mixer silences the chip and forgets what it sent, so the next frame goes out whole: a chip that replaced another gets everything it needs.
+`ChipAllocator` in `src/chip/` assigns the channels and generators and remembers the previous channel owners. `ChipMixer` in `src/plugins/uZX/notes_to_psg/NotesToPsgMapper.*` renders the resulting PSG parameters. A chip channel without a voice gets volume 0 and its envelope off. After an all-notes-off, a reset or a move to other MIDI channels the mixer silences the chip and forgets what it sent, so the next frame goes out whole: a chip that replaced another gets everything it needs.
 
 ## The wires
 

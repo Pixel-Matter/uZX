@@ -6,6 +6,18 @@ Granular open tasks for μZX Studio and the shared engine. Player priorities are
 
 No open findings. [refactoring.md](refactoring.md) holds the review's scope and its deferred notes; new findings are listed here by their number there.
 
+## Design tokens
+
+The Player draws with `Colors`, `Fonts` and `Space` from `src/gui/common/LookAndFeel.h`: colours by role, a type scale of point heights, gaps named by what they separate. Studio-only views and the dialogs still set their own numbers.
+
+- [ ] Spacing in Studio's views to `Space`: Tempo Inspector, the tuning picker (`TuningPickerComponent`, about 15 layout numbers), the PSG parameter editor and details panel, the NotesToPsg, ChipInstrument and Scope plugin UIs, the generic plugin adapters
+- [ ] Spacing and type in the dialogs and windows: Render Video, Audio Settings, Tuning (`TuningPreview`, `TuningPreviewGrid`), About, Update, Progress
+- [ ] Labels and text editors that set no font get JUCE's height 15 (em 12.4, between `body` and `menu`): give them `Fonts::body` through `MoLookAndFeel`
+- [ ] Fonts sized by layout instead of the scale: `LabeledSlider` and `ComboBox` labels (`withPointHeight(labelHeight)`), note-lane names (`jmin(11, noteHeight - 2)`, or 9), the progress bar's text (`height * 0.6`); snap them with `Fonts::fit` or give each a step
+- [ ] Studio's track header: the name row's `8 + font height` and the 20 px buttons, on the grid
+- [ ] Control heights: rows and buttons are 16, 18, 20, 24, 28, 32 or 40, chosen per file; name the few the UI needs next to `Space`
+- [ ] `gui/nodes`, not compiled, draws with JUCE's named colours and literal sizes: move it to the tokens when it comes back
+
 ## Arranger mode
 
 - [ ] Double timecode

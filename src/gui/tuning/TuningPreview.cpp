@@ -375,6 +375,7 @@ void TuningPreviewComponent::setupTuningGrid() {
 
 void TuningPreviewComponent::setupExportButton() {
     exportButton.setButtonText("Export to CSV");
+    MoLookAndFeel::setLargeText(exportButton);
     exportButton.onClick = [this]() { handleExportButtonClick(); };
     addAndMakeVisible(exportButton);
 }

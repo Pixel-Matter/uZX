@@ -282,7 +282,12 @@ public:
                                   int standardMenuItemHeight,
                                   int& idealWidth, int& idealHeight) override;
 
+    /** A button's text grows with its height, but past body only for a button marked with setLargeText:
+        a dialog's actions, the AY channels' letters. Buttons in a row of controls stay as small as the
+        labels beside them. */
     Font getTextButtonFont(TextButton&, int buttonHeight) override;
+    static void setLargeText(Button& button) { button.getProperties().set(largeTextProperty, true); }
+    static constexpr const char* largeTextProperty = "largeText";
 
     void drawButtonText(Graphics& g,
                         TextButton& button,

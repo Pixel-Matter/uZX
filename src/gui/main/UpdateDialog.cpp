@@ -24,6 +24,7 @@ UpdateDialogComponent::UpdateDialogComponent(const String& appName,
     addChildComponent(link_);
 
     closeButton_.setButtonText("Close");
+    MoLookAndFeel::setLargeText(closeButton_);
     closeButton_.onClick = [this] {
         if (auto* window = findParentComponentOfClass<DialogWindow>())
             window->exitModalState(0);

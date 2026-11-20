@@ -50,6 +50,7 @@ AYPluginUI::ChannelGroup::~ChannelGroup() {
 
 void AYPluginUI::ChannelGroup::addToComponent(Component& parent) {
     parent.addAndMakeVisible(channelOn);
+    MoLookAndFeel::setLargeText(channelOn);  // the channel's letter, as large as the button allows
     parent.addAndMakeVisible(toneOn);
     parent.addAndMakeVisible(noiseOn);
     parent.addAndMakeVisible(envelopeOn);

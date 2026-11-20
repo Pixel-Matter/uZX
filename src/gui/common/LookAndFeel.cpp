@@ -356,10 +356,11 @@ void MoLookAndFeel::getIdealPopupMenuItemSize(const String& text, const bool isS
     }
 }
 
-Font MoLookAndFeel::getTextButtonFont(TextButton&, int buttonHeight) {
+Font MoLookAndFeel::getTextButtonFont(TextButton& button, int buttonHeight) {
     const int capHeight = buttonHeight - 10;
     const float pointHeight = (float) capHeight / 0.75f; // approx cap height to point size
-    return getSmallFont(Fonts::fit(pointHeight));
+    const float largest = button.getProperties()[largeTextProperty] ? Fonts::title : Fonts::body;
+    return getSmallFont(Fonts::fit(jmin(largest, pointHeight)));
 }
 
 void MoLookAndFeel::drawButtonText(Graphics& g,

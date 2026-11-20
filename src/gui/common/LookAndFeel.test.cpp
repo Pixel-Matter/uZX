@@ -44,7 +44,11 @@ public:
             expectEquals(Fonts::fit(10.7f), Fonts::small);
             expectEquals(Fonts::fit(8.0f), 8.0f);
             TextButton button;
-            expectEquals(lf.getTextButtonFont(button, 64).getHeightInPoints(), Fonts::title, "a tall channel button");
+            expectEquals(lf.getTextButtonFont(button, 64).getHeightInPoints(), Fonts::body, "a tall button in a row of controls");
+            TextButton large;
+            MoLookAndFeel::setLargeText(large);
+            expectEquals(lf.getTextButtonFont(large, 64).getHeightInPoints(), Fonts::title, "a channel's letter");
+            expectEquals(lf.getTextButtonFont(large, 20).getHeightInPoints(), Fonts::body, "a short one");
             expectEquals(lf.getTextButtonFont(button, 20).getHeightInPoints(), Fonts::body, "AY");
             expectEquals(lf.getPopupMenuFont().getHeightInPoints(), Fonts::menu, "menus");
         }

@@ -214,6 +214,7 @@ inline constexpr float menu    = 13.25f;  // popup menus, where 12 reads small; 
 inline constexpr float title   = 16.0f;   // the empty window's hint
 inline constexpr float readout = 15.8f;   // the transport's numbers, Iosevka Aile Semibold
 inline constexpr float mono    = 11.75f;  // Iosevka Fixed as tall as body text
+inline constexpr float monoSmall = 9.2f;  // Iosevka Fixed in the register lanes, its one size sharp at 1x and 2x
 
 /** Inter, the UI's font, at a point height of the scale. */
 inline FontOptions ui(float pointHeight) { return FontOptions().withPointHeight(pointHeight); }

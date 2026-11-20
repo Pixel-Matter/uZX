@@ -63,11 +63,12 @@ void UpdateDialogComponent::paint(Graphics& g) {
 }
 
 void UpdateDialogComponent::resized() {
-    auto bounds = getLocalBounds().reduced(24, 16);
-    closeButton_.setBounds(bounds.removeFromBottom(40).withSizeKeepingCentre(120, 32));
-    bounds.removeFromBottom(12);
+    auto bounds = getLocalBounds().reduced(Space::dialog);
+    closeButton_.setBounds(bounds.removeFromBottom(Controls::actionHeight)
+                               .withSizeKeepingCentre(Controls::actionWidth, Controls::actionHeight));
+    bounds.removeFromBottom(Space::apart);
     if (link_.isVisible())
-        link_.setBounds(bounds.removeFromBottom(24));
+        link_.setBounds(bounds.removeFromBottom(Controls::height));
     message_.setBounds(bounds);  // without a link, the message is centred in the link's space too
 }
 

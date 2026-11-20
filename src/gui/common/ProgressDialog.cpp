@@ -29,7 +29,7 @@ ProgressDialog::ProgressDialog(const String& title,
     content.addAndMakeVisible(content.progressBar);
     content.addAndMakeVisible(content.cancelButton);
 
-    content.setSize(400, 80);
+    content.setSize(400, 2 * Space::dialog + Controls::height + Space::related + Controls::actionHeight);
     setUsingNativeTitleBar(true);  // as the other dialogs: the system's close button and corners
     setContentOwned(&content, true);
     centreAroundComponent(nullptr, getWidth(), getHeight());
@@ -61,13 +61,13 @@ void ProgressDialog::timerCallback() {
 }
 
 void ProgressDialog::ContentComponent::resized() {
-    auto bounds = getLocalBounds().reduced(10);
+    auto bounds = getLocalBounds().reduced(Space::dialog);
 
-    auto buttonArea = bounds.removeFromBottom(30);
-    cancelButton.setBounds(buttonArea.removeFromRight(100));
+    auto buttonArea = bounds.removeFromBottom(Controls::actionHeight);
+    cancelButton.setBounds(buttonArea.removeFromRight(Controls::actionWidth));
 
-    bounds.removeFromBottom(6);
-    progressBar.setBounds(bounds.removeFromBottom(24));
+    bounds.removeFromBottom(Space::related);
+    progressBar.setBounds(bounds.removeFromBottom(Controls::height));
 }
 
 } // namespace MoTool

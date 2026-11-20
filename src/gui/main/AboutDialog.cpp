@@ -258,8 +258,8 @@ void AboutDialogComponent::resized() {
 int AboutDialogComponent::layOut(int width) {
     // Each row is its text with about 4 px above and below, as the info lines' 1.5 spacing gives them; groups are
     // `gap` apart, so the space between groups and around them reads as one 20 px.
-    static constexpr int gap = 12, margin = 16;
-    auto bounds = Rectangle<int>(width, std::numeric_limits<int>::max() / 2).reduced(24, margin);
+    static constexpr int gap = Space::apart;  // between sections, each standing alone
+    auto bounds = Rectangle<int>(width, std::numeric_limits<int>::max() / 2).reduced(Space::dialog);
 
     companyLabel_.setBounds(bounds.removeFromTop(24));
     titleLabel_.setBounds(bounds.removeFromTop(56));
@@ -278,10 +278,10 @@ int AboutDialogComponent::layOut(int width) {
     copyrightLabel_.setBounds(bounds.removeFromTop(24));
 
     bounds.removeFromTop(gap);
-    const auto buttonArea = bounds.removeFromTop(40);
-    closeButton_.setBounds(buttonArea.withSizeKeepingCentre(120, 32));
+    const auto buttonArea = bounds.removeFromTop(Controls::actionHeight);
+    closeButton_.setBounds(buttonArea.withSizeKeepingCentre(Controls::actionWidth, Controls::actionHeight));
 
-    return buttonArea.getBottom() + margin;
+    return buttonArea.getBottom() + Space::dialog;
 }
 
 } // namespace MoTool

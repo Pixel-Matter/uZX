@@ -166,21 +166,21 @@ public:
         renderButton.addShortcut(juce::KeyPress(juce::KeyPress::returnKey));
 
         showFfmpeg();
-        setSize(540, 360);
+        setSize(548, 360);  // the second column's boxes as wide as before the group gap
     }
 
     void resized() override {
-        constexpr int rowHeight = 24, gap = 8, labelWidth = 80, boxWidth = 170;
-        auto area = getLocalBounds().reduced(16);
+        constexpr int labelWidth = 80, boxWidth = 170;
+        auto area = getLocalBounds().reduced(Space::dialog);
         auto row = [&] {
-            auto r = area.removeFromTop(rowHeight);
-            area.removeFromTop(gap);
+            auto r = area.removeFromTop(Controls::height);
+            area.removeFromTop(Space::related);
             return r;
         };
         auto pair = [&](juce::Rectangle<int> r, juce::Label& label, juce::Component& box, int width) {
             label.setBounds(r.removeFromLeft(labelWidth));
             box.setBounds(r.removeFromLeft(width));
-            return r.withTrimmedLeft(gap * 2);
+            return r.withTrimmedLeft(Space::group);  // the two columns are groups
         };
 
         auto r = pair(row(), showLabel, showBox, boxWidth);
@@ -192,7 +192,7 @@ public:
         r = row();
         ffmpegLabel.setBounds(r.removeFromLeft(labelWidth));
         chooseButton.setBounds(r.removeFromRight(90));
-        ffmpegPath.setBounds(r.withTrimmedRight(gap));
+        ffmpegPath.setBounds(r.withTrimmedRight(Space::related));
 
         r = pair(row(), renderLabel, renderBox, boxWidth);
         pair(r, outputLabel, outputBox, r.getWidth() - labelWidth);
@@ -203,10 +203,10 @@ public:
         r = pair(row(), audioLabel, audioBox, boxWidth);
         normalizeButton.setBounds(r.withTrimmedLeft(labelWidth));
 
-        auto buttons = area.removeFromBottom(28);
-        renderButton.setBounds(buttons.removeFromRight(100));
-        buttons.removeFromRight(gap);
-        cancelButton.setBounds(buttons.removeFromRight(100));
+        auto buttons = area.removeFromBottom(Controls::actionHeight);
+        renderButton.setBounds(buttons.removeFromRight(Controls::actionWidth));
+        buttons.removeFromRight(Space::related);
+        cancelButton.setBounds(buttons.removeFromRight(Controls::actionWidth));
         note.setBounds(area.withTrimmedLeft(labelWidth));
     }
 

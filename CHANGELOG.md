@@ -7,6 +7,10 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 ### Community
 - Fixed: the README's Discord link and the issue form's support link opened only for people already in the server; they are an invite link
 
+### Strudel browser prototype
+
+- Play and live-edit bass and pluck patterns on one AY/YM chip, with a scrolling piano roll and channel, noise and envelope ownership.
+
 ### Download
 - Linux: the download is a folder with the app as `uzx-player` or `uzx-studio`, its menu entry and icon, and `install.sh`, which adds it to the applications menu, where it was a single binary named `μZX Player`
 

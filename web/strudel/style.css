@@ -1,0 +1,107 @@
+:root {
+    color-scheme: dark;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    color: #e4eee7;
+    background: #121816;
+    --muted: #a3b0a9;
+    --line: #33413a;
+    --panel: #1a221e;
+    --bass: #92cff0;
+    --pluck: #f0bc78;
+    --accent: #c0eb9a;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { width: min(1120px, 100% - 48px); margin: 36px auto 48px; }
+h1, h2, p { margin: 0; }
+h1 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.05em; }
+h2 { font-size: 1rem; font-weight: 640; }
+
+.page-header, .panel-header, .editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.page-header { margin-bottom: 24px; }
+.brand { display: flex; align-items: center; gap: 13px; }
+.brand p { color: var(--muted); font-size: 0.84rem; margin-top: 3px; }
+.brand-mark {
+    width: 44px;
+    height: 44px;
+    border: 1px solid #3f604b;
+    border-radius: 11px;
+    background: #27392d;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+}
+.brand-mark i { width: 5px; height: 10px; background: var(--accent); border-radius: 1px; }
+.brand-mark i:nth-child(2) { height: 22px; }
+.brand-mark i:nth-child(3) { height: 15px; }
+.chip-selection { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+button, select {
+    font: inherit;
+    color: inherit;
+    background: #242f28;
+    border: 1px solid #43564a;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 0.83rem;
+}
+button:not(:disabled), select:not(:disabled), summary { cursor: pointer; }
+button:not(:disabled):hover, select:not(:disabled):hover { filter: brightness(1.2); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+button:disabled, select:disabled { opacity: 0.55; }
+button.primary { background: var(--accent); color: #1b2f13; border-color: transparent; font-weight: 700; }
+button span { margin-right: 3px; font-size: 0.7rem; }
+
+.panel { margin: 0 0 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.panel-header { min-height: 50px; padding: 10px 16px; }
+.transport { display: flex; flex-wrap: wrap; gap: 7px; }
+#editor { background: #141a17; border-block: 1px solid var(--line); }
+#editor .cm-editor { min-height: 172px; max-height: 45vh; background: transparent; }
+#editor .cm-scroller {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 15px;
+    line-height: 1.65;
+}
+#editor .cm-gutters { background: #181f1b; border-color: #29362e; }
+#editor .cm-content, #editor .cm-gutter { padding-block: 12px; }
+#editor .cm-focused { outline: none; }
+#editor .cm-line { padding-left: 10px; }
+.editor-footer { min-height: 39px; padding: 8px 16px; font-size: 0.78rem; color: var(--muted); }
+#status { color: var(--accent); }
+#error { color: #ffd2bc; background: #3a2923; padding: 9px 16px; font-size: 0.82rem; overflow-wrap: anywhere; }
+kbd { color: #d1e0d7; font-size: 0.73rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 9px 14px; color: var(--muted); font-size: 0.77rem; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 12px; height: 8px; border-radius: 2px; }
+.legend .bass { background: var(--bass); }
+.legend .pluck { background: var(--pluck); }
+.legend .contended { border: 1px dashed #bfcac3; }
+.timeline-key {
+    display: grid;
+    grid-template-columns: calc(55px + (100% - 55px) * 0.72) 1fr;
+    border-top: 1px solid var(--line);
+    background: #151c18;
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+.timeline-key span { padding: 7px 10px; }
+.timeline-key span:first-child { text-align: right; }
+.timeline-key span + span { border-left: 1px solid var(--line); }
+canvas { display: block; width: 100%; }
+#score { height: clamp(215px, 33vh, 330px); }
+#ownership { height: 120px; }
+details { border-top: 1px solid var(--line); }
+summary { padding: 9px 16px; color: #cedbd3; font-size: 0.84rem; }
+@media (max-width: 620px) {
+    main { width: calc(100% - 24px); margin-top: 20px; }
+    .page-header { align-items: flex-end; }
+    .chip-selection { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 0.8rem; }
+    .editor-footer { align-items: flex-start; flex-direction: column; gap: 4px; }
+    .panel-header { padding-inline: 10px; }
+}

@@ -185,8 +185,8 @@ void EditComponent::resized() {
     playhead.noGrabArea = playhead.getLocalArea(&ruler, ruler.getLoopStripBounds());
     loopLines.setBounds(timeline(r));
     if (legend != nullptr)
-        legend->setTopRightPosition(timeline(r).getRight() - ClipHeader::pad,
-                                    r.getY() + ClipComponent::ringWidth + ClipHeader::pad);
+        legend->setTopRightPosition(timeline(r).getRight() - ClipHeader::padX,
+                                    r.getY() + ClipComponent::ringWidth + ClipHeader::padY);
     if (emptyHint != nullptr) {
         const auto font = emptyHint->getFont();
         int textWidth = 0;

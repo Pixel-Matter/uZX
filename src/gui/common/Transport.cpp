@@ -262,7 +262,7 @@ void TransportBar::paint(Graphics& g) {
 }
 
 void TransportBar::resized() {
-    static constexpr int spacing = margin;
+    static constexpr int spacing = Space::related;  // between the output section's meters and knob
     auto b = getLocalBounds().reduced(margin);
     const int w = readoutHeight;  // the unit of the readouts' widths
 
@@ -282,7 +282,8 @@ void TransportBar::resized() {
 
     // The block is laid out from x = 0, then shifted into place. Gaps show what belongs together:
     // a label hugs its value, readouts stand apart, groups further apart, the transport buttons close.
-    static constexpr int labelGap = grid, buttonGap = 2 * grid, readoutGap = 3 * grid, groupGap = 6 * grid;
+    static constexpr int labelGap = Space::tight, buttonGap = Space::related, readoutGap = Space::apart,
+                         groupGap = Space::group;
     std::vector<Component*> block;
     int x = 0;
     // Readouts and labels are readoutHeight tall, centred on the bar

@@ -120,7 +120,7 @@ static Font getHeaderFont() {
 }
 
 int ClipHeader::getWarningWidth(const String& warning) {
-    return GlyphArrangement::getStringWidthInt(getHeaderFont(), warning) + 2 * pad;
+    return GlyphArrangement::getStringWidthInt(getHeaderFont(), warning) + 2 * padX;
 }
 
 void ClipHeader::paintWarning(Graphics& g, Rectangle<int> area, const String& warning) {
@@ -128,7 +128,7 @@ void ClipHeader::paintWarning(Graphics& g, Rectangle<int> area, const String& wa
     g.fillRoundedRectangle(area.toFloat(), 2.0f);
     g.setColour(Colors::Theme::dark);
     g.setFont(getHeaderFont());
-    g.drawText(warning, area.reduced(pad, 0), Justification::centred, true);
+    g.drawText(warning, area.reduced(padX, 0), Justification::centred, true);
 }
 
 void ClipHeader::paint(Graphics& g) {
@@ -140,7 +140,7 @@ void ClipHeader::paint(Graphics& g) {
     g.setColour(getFill(clip->getColour(), selected));
     g.fillPath(shape);
 
-    auto row = getShownArea(*this).reduced(pad);
+    auto row = getShownArea(*this).reduced(padX, padY);
 
     const Font nameFont(Fonts::ui(Fonts::caption).withStyle("Bold"));
     const Font font = getHeaderFont();
@@ -151,17 +151,17 @@ void ClipHeader::paint(Graphics& g) {
     // Each item with the gap before it; warnings are chips, with padding inside.
     std::vector<int> itemWidths;
     for (const auto& warning : warnings)
-        itemWidths.push_back(pad + getWarningWidth(warning));
+        itemWidths.push_back(gap + getWarningWidth(warning));
     if (info.isNotEmpty())
-        itemWidths.push_back(pad + GlyphArrangement::getStringWidthInt(font, info));
+        itemWidths.push_back(gap + GlyphArrangement::getStringWidthInt(font, info));
     const bool showLegend = selected || editViewState.disableClipSelection;
     const int legendWidth = showLegend ? getLegendWidth() : 0;
     const int nameWidth = GlyphArrangement::getStringWidthInt(nameFont, name);
-    const auto fitted = fit(row.getWidth(), nameWidth, itemWidths, legendWidth == 0 ? 0 : legendWidth + pad);
+    const auto fitted = fit(row.getWidth(), nameWidth, itemWidths, legendWidth == 0 ? 0 : legendWidth + gap);
 
     if (fitted.legend) {
         auto legend = row.removeFromRight(legendWidth);
-        row.removeFromRight(pad);
+        row.removeFromRight(gap);
         // The legend's envelope and noise swatches are see-through, drawn for the dark body.
         g.setColour(Colors::Theme::backgroundAlt);
         g.fillRoundedRectangle(legend.expanded(1).toFloat(), 2.0f);
@@ -178,8 +178,8 @@ void ClipHeader::paint(Graphics& g) {
 
     g.setFont(font);
     for (size_t i = 0; i < fitted.items; ++i) {
-        row.removeFromLeft(pad);
-        auto area = row.removeFromLeft(itemWidths[i] - pad);
+        row.removeFromLeft(gap);
+        auto area = row.removeFromLeft(itemWidths[i] - gap);
         if (i < (size_t) warnings.size()) {
             paintWarning(g, area, warnings[(int) i]);
         } else {

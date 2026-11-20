@@ -7,7 +7,7 @@
 #include <common/Utilities.h>  // from Tracktion
 
 namespace {
-constexpr int deviceSpacing = 8;
+constexpr int deviceSpacing = MoTool::Space::related;
 constexpr int addButtonComponentWidth = 16;
 }
 

@@ -90,7 +90,7 @@ public:
     /** Sizes and gaps are on a 4 px grid. The transport buttons fill the bar's height inside the margin;
         readouts and meters are shorter. */
     static constexpr int grid = 4;
-    static constexpr int margin = 2 * grid, buttonSize = 8 * grid, readoutHeight = 6 * grid;
+    static constexpr int margin = Space::margin, buttonSize = 8 * grid, readoutHeight = 6 * grid;
     static constexpr int height = buttonSize + 2 * margin;
 
     void paint(Graphics& g) override;

@@ -495,6 +495,7 @@ juce_add_binary_data(MoToolBinaryData SOURCES
     ${CMAKE_SOURCE_DIR}/resources/fonts/Inter-Bold.ttf
     ${CMAKE_SOURCE_DIR}/resources/fonts/IosevkaAile-Regular.ttf
     ${CMAKE_SOURCE_DIR}/resources/fonts/IosevkaAile-SemiBold.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/IosevkaFixed-Regular.ttf
 )
 
 target_link_libraries(motool_common PUBLIC MoToolBinaryData)

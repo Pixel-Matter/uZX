@@ -56,7 +56,6 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] **Clock-mode frame grid** — frame steps divide the second (sixths and twelfths at 24/48 fps), so ticks no longer run …20, 24, 29; the frame field is three digits wide throughout at 200 fps
 - [ ] **DMG background image**, note in background how to pass the gatekeeper with "Open anyway"
 - [ ] **PDF user guide**
-- [ ] **Discord**
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
 - [ ] **Channel split mode** — each AY channel in its own lane
 - [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.

@@ -76,6 +76,9 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 - Player: the Transport menu has **End**, **Step Back** / **Step Forward** and **Frame Back** / **Frame Forward**, each with its key, which no menu showed before
 - Menu items are in title case, and those that open a window end in "...": **Play/Pause**, **Zoom to Project**, **Zoom In**, **Render to Audio**, **Audio Settings...**, **Plugins...**, **Tuning Tables...**, and **Show Hex Values on Hover**, **Tuning and Key...** and **Tempo Inspector...** in the clip menu
 
+### Tooltips
+- Fixed: tooltips had white pixels at their rounded corners; the window behind shows through them
+
 ### Tempo detection
 - Importing a PSG finds the tracker's rows from more than loud note starts: a legato note, a soft attack and a drum change count too, each weighed by how often it starts a row in tracker modules. More tunes get a tempo, and the grid follows the tracker's own rows more often, such as speed 3 where it showed 6
 - A PSG whose rows hold no one grid, with a row a frame longer now and then or a groove that varies, gets its tempo from the beat it repeats at; such tunes had none

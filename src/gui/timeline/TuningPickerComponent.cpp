@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 
+#include "../../controllers/MainCommands.h"
 #include "../../models/Ids.h"
 #include "../common/LookAndFeel.h"
 #include "../common/Utilities.h"
@@ -97,9 +98,15 @@ TuningPickerComponent::TuningPickerComponent(PsgClip& clip)
             c->clearTuningChoice();
     };
 
+    tablesButton_.onClick = [this] {
+        if (auto* c = clip_.get())
+            if (auto* manager = c->edit.engine.getUIBehaviour().getApplicationCommandManager())
+                manager->invokeDirectly(Commands::MainAppCommands::settingsTuningTables, true);
+    };
+
     for (auto* c : std::initializer_list<Component*>{
              &tableLabel_, &tableBox_, &detectedButton_, &clockLabel_, &clockBox_, &a4Label_, &keyLabel_, &keyBox_,
-             histogramView_.get()})
+             histogramView_.get(), &tablesButton_})
         addAndMakeVisible(c);
 
     clip.addSelectableListener(this);
@@ -123,7 +130,7 @@ void TuningPickerComponent::show(PsgClip& clip) {
     o.resizable = true;
     o.useBottomRightCornerResizer = true;
     auto* content = new TuningPickerComponent(clip);
-    content->setSize(560, 370);
+    content->setSize(560, 400);  // the Tuning Tables button under the histogram
     o.content.setOwned(content);
     Helpers::launchDialogAsync(o);
 }
@@ -146,21 +153,26 @@ void TuningPickerComponent::close() {
 }
 
 void TuningPickerComponent::resized() {
-    auto area = getLocalBounds().reduced(10);
-    auto row = area.removeFromTop(24);
-    tableLabel_.setBounds(row.removeFromLeft(90));
-    detectedButton_.setBounds(row.removeFromRight(110));
-    tableBox_.setBounds(row.reduced(4, 0));
-    area.removeFromTop(6);
-    row = area.removeFromTop(24);
-    clockLabel_.setBounds(row.removeFromLeft(90));
-    clockBox_.setBounds(row.removeFromLeft(220).reduced(4, 0));
+    constexpr int labelWidth = 90, buttonWidth = 110;
+    auto area = getLocalBounds().reduced(Space::dialog);
+    auto row = area.removeFromTop(Controls::height);
+    tableLabel_.setBounds(row.removeFromLeft(labelWidth));
+    detectedButton_.setBounds(row.removeFromRight(buttonWidth));
+    tableBox_.setBounds(row.reduced(Space::tight, 0));
+    area.removeFromTop(Space::related);
+    row = area.removeFromTop(Controls::height);
+    clockLabel_.setBounds(row.removeFromLeft(labelWidth));
+    clockBox_.setBounds(row.removeFromLeft(220).reduced(Space::tight, 0));
     a4Label_.setBounds(row);
-    area.removeFromTop(6);
-    row = area.removeFromTop(24);
-    keyLabel_.setBounds(row.removeFromLeft(90));
-    keyBox_.setBounds(row.reduced(4, 0));
-    area.removeFromTop(10);
+    area.removeFromTop(Space::related);
+    row = area.removeFromTop(Controls::height);
+    keyLabel_.setBounds(row.removeFromLeft(labelWidth));
+    keyBox_.setBounds(row.reduced(Space::tight, 0));
+
+    // The histogram, then the way to the tables themselves under it
+    tablesButton_.setBounds(area.removeFromBottom(Controls::height).removeFromRight(buttonWidth));
+    area.removeFromBottom(Space::related);
+    area.removeFromTop(Space::apart);
     histogramView_->setBounds(area);
 }
 

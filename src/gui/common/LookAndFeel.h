@@ -222,6 +222,7 @@ private:
     Typeface::Ptr interBoldTypeface_;
     Typeface::Ptr iosevkaRegularTypeface_;
     Typeface::Ptr iosevkaSemiBoldTypeface_;
+    Typeface::Ptr iosevkaFixedTypeface_;
 
 public:
 

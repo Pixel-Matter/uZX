@@ -15,6 +15,8 @@ MoLookAndFeel::MoLookAndFeel() {
         BinaryData::IosevkaAileRegular_ttf, BinaryData::IosevkaAileRegular_ttfSize);
     iosevkaSemiBoldTypeface_ = Typeface::createSystemTypefaceFor(
         BinaryData::IosevkaAileSemiBold_ttf, BinaryData::IosevkaAileSemiBold_ttfSize);
+    iosevkaFixedTypeface_ = Typeface::createSystemTypefaceFor(
+        BinaryData::IosevkaFixedRegular_ttf, BinaryData::IosevkaFixedRegular_ttfSize);
 
     setDefaultSansSerifTypefaceName(interRegularTypeface_->getName());
 
@@ -91,17 +93,14 @@ MoLookAndFeel::MoLookAndFeel() {
     setColour(GroupComponent::textColourId, Theme::textSecondary);
 }
 
+// Every font is an embedded one: monospaced names get Iosevka Fixed, Iosevka Aile its own,
+// and any other name, the default sans-serif and serif included, Inter. No system font is used.
 Typeface::Ptr MoLookAndFeel::getTypefaceForFont(const Font& font) {
-    auto name = font.getTypefaceName();
-    bool isDefault = (name == Font::getDefaultSansSerifFontName());
-    bool isInter   = name.containsIgnoreCase("Inter");
-    auto style = font.getTypefaceStyle();
+    const auto name = font.getTypefaceName();
+    const auto style = font.getTypefaceStyle();
 
-    if (isInter || isDefault) {
-        if (style.containsIgnoreCase("Bold"))
-            return interBoldTypeface_;
-        return interRegularTypeface_;
-    }
+    if (name == Font::getDefaultMonospacedFontName() || name.containsIgnoreCase("Iosevka Fixed"))
+        return iosevkaFixedTypeface_;
 
     if (name.containsIgnoreCase("Iosevka Aile")) {
         if (style.containsIgnoreCase("Semibold") || style.containsIgnoreCase("Semi Bold"))
@@ -109,8 +108,7 @@ Typeface::Ptr MoLookAndFeel::getTypefaceForFont(const Font& font) {
         return iosevkaRegularTypeface_;
     }
 
-    auto typeface = LookAndFeel_V4::getTypefaceForFont(font);
-    return typeface != nullptr ? typeface : interRegularTypeface_;
+    return style.containsIgnoreCase("Bold") ? interBoldTypeface_ : interRegularTypeface_;
 }
 
 void MoLookAndFeel::debugColourScheme() {

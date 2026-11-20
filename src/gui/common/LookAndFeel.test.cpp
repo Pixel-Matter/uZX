@@ -43,6 +43,7 @@ public:
             expect(BinaryData::InterBold_ttfSize > 0, "Inter Bold font data should be non-empty");
             expect(BinaryData::IosevkaAileRegular_ttfSize > 0, "Iosevka Regular font data should be non-empty");
             expect(BinaryData::IosevkaAileSemiBold_ttfSize > 0, "Iosevka SemiBold font data should be non-empty");
+            expect(BinaryData::IosevkaFixedRegular_ttfSize > 0, "Iosevka Fixed font data should be non-empty");
         }
 
         beginTest("Default sans-serif resolves to embedded Inter");
@@ -109,12 +110,34 @@ public:
                    "Regular and Bold should be different typeface objects");
         }
 
-        beginTest("Unknown font falls through to system");
+        beginTest("Any font name resolves to an embedded typeface");
         {
-            Font unknownFont(FontOptions("Comic Sans MS", 14.0f, Font::plain));
-            auto typeface = lf.getTypefaceForFont(unknownFont);
-            // Should not crash and should not return Inter/Iosevka
-            expect(typeface != nullptr, "Unknown font should still return a typeface");
+            const auto nameOf = [&lf](const FontOptions& options) {
+                return lf.getTypefaceForFont(Font(options))->getName();
+            };
+            expectEquals(nameOf(FontOptions(Font::getDefaultMonospacedFontName(), 12.0f, Font::plain)),
+                         String("Iosevka Fixed"));
+            expectEquals(nameOf(FontOptions("Iosevka Fixed", 12.0f, Font::plain)), String("Iosevka Fixed"));
+            for (const auto* name : {"Comic Sans MS", "Menlo", "<Serif>"})
+                expect(nameOf(FontOptions(name, 14.0f, Font::plain)).containsIgnoreCase("Inter"), name);
+        }
+
+        beginTest("The embedded fonts have the characters the UI draws");
+        {
+            // Non-ASCII characters of the UI strings; one missing would come from a system font
+            const auto has = [this, &lf](const FontOptions& options, const String& chars) {
+                const auto typeface = lf.getTypefaceForFont(Font(options));
+                for (auto c : chars)
+                    expect(typeface->getNominalGlyphForCodepoint(c).has_value(),
+                           typeface->getName() + " " + typeface->getStyle() + " lacks U+"
+                               + String::toHexString((int) c).toUpperCase());
+            };
+            // flat, natural, sharp, ellipsis, em and en dash, warning, cent, mu, times, copyright
+            const auto inter = String::fromUTF8("\xE2\x99\xAD\xE2\x99\xAE\xE2\x99\xAF\xE2\x80\xA6\xE2\x80\x94\xE2\x80\x93\xE2\x9A\xA0\xC2\xA2\xCE\xBC\xC3\x97\xC2\xA9");
+            has(FontOptions("Inter", 14.0f, Font::plain), inter);
+            has(FontOptions("Inter", "Bold", 14.0f), inter);
+            has(FontOptions(Font::getDefaultMonospacedFontName(), 12.0f, Font::plain),
+                String::fromUTF8("\xE2\x99\xAD\xE2\x99\xAE\xE2\x99\xAF\xE2\x80\xA6\xC2\xA2\xCE\xBC"));
         }
     }
 };

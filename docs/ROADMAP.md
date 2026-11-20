@@ -49,7 +49,7 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] Rework tempo detection
 - [x] PSG hover shown only when minor grid step is a frame
 - [x] **Tuning in the Player** — **Settings → Tuning Tables...** (`Cmd+Shift+T`)
-- [ ] "Tuning" or "Inspect" button in the Player PsgClip tuning detector dialog that opens main Tuning window
+- [x] **Tuning Tables…** button in the clip's **Tuning and Key…** window, which opens the Tuning Tables window
 
 #### P2 — Nice to have
 

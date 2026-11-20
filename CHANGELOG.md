@@ -101,6 +101,9 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 - Fixed: a module whose rows follow no pattern, such as rows of 4-4-4-4-4-4-4-3 frames with a longer round now and then, opened at eight times its commonest row (32 frames to the beat) instead of what its rows usually make (31)
 - Fixed: the Player played a TAYM at the clock its tuning detection guessed, not at the one the file states; a fitted tuning is now named at the file's clock, for example `12TET 440 Hz Atari ST`
 
+### Tuning and key
+- **Tuning and Key…** has a **Tuning Tables…** button, which opens the Tuning Tables window
+
 ### Look
 - Tuning Tables: a sharp note's name tints toward the app's blue and a flat one's toward its red, where they were pure blue and red
 - Fixed: Tuning Tables tinted a note up to 5 cents flat red, though one up to 5 cents sharp stayed untinted

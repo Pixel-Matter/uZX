@@ -47,6 +47,7 @@ private:
     ComboBox tableBox_;
     ComboBox keyBox_;
     TextButton detectedButton_{"Use detected"};
+    TextButton tablesButton_{"Tuning Tables..."};  // the tables themselves, in their own window
     std::unique_ptr<HistogramView> histogramView_;
 
     // Items are listed in detection order; the combo IDs below index into these copies,

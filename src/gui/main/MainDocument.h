@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../timeline/EditComponent.h"
+#include "../common/MoTooltipWindow.h"
 #include "../common/Transport.h"
 #include "../../util/Helpers.h"
 
@@ -57,7 +58,7 @@ private:
     te::Edit& edit_;
     TransportBar transportBar_;
     EditComponent editComponent_;  // former AudioTimeline
-    TooltipWindow tooltips_ {this};  // without one in the window, no tooltip in it shows
+    MoTooltipWindow tooltips_ {this};  // without one in the window, no tooltip in it shows
     // FooterBar footer_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainDocumentComponent)

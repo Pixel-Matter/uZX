@@ -49,11 +49,12 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 - [x] Rework tempo detection
 - [x] PSG hover shown only when minor grid step is a frame
 - [x] **Tuning in the Player** — **Settings → Tuning Tables...** (`Cmd+Shift+T`)
-- [ ] Tuning detector button in the Player
+- [ ] "Tuning" or "Inspect" button in the Player PsgClip tuning detector dialog that opens main Tuning window
 
 #### P2 — Nice to have
 
 - [x] **Clock-mode frame grid** — frame steps divide the second (sixths and twelfths at 24/48 fps), so ticks no longer run …20, 24, 29; the frame field is three digits wide throughout at 200 fps
+- [ ] Piano keys/octave lanes lables should be drawn in **its own track gutters**, not in clips.
 - [ ] **DMG background image**, note in background how to pass the gatekeeper with "Open anyway"
 - [ ] **PDF user guide**
 - [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)

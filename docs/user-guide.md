@@ -14,6 +14,10 @@ The screenshots show the macOS build using the [Guide demo project](../tests/fix
 | **μZX Tuning** | Tuning table (note table) viewer in equal temperament and just intonation; a window in the Player and Studio |
 | **μZX Studio** | Editor for writing AY music, with a timeline, instruments and automation. An early prototype, not ready for testing yet |
 
+### Strudel browser prototype
+
+The browser editor plays Strudel patterns through one AY or YM chip. Select a chip, press **Play**, then edit the pattern and choose **Re-evaluate**. The piano roll shows scheduled notes and rendered voices. **Chip ownership** shows which notes hold the three channels and shared generators. [Build and run the browser editor](../web/strudel/README.md)
+
 ### Installing on macOS
 
 1. Download the `.dmg` from [Releases](https://github.com/Pixel-Matter/uZX/releases), open it and drag the app to **Applications**.

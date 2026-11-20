@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#121816">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%2327392d%27/%3E%3Cpath d=%27M10 20V13m6 11V8m6 14V11%27 stroke=%27%23c0eb9a%27 stroke-width=%274%27/%3E%3C/svg%3E">
+  <title>uZX Strudel</title>
+</head>
+<body>
+  <main>
+    <header class="page-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div><h1>uZX Strudel</h1><p>Live coding for a single AY/YM chip</p></div>
+      </div>
+      <div class="chip-selection">
+        <label for="chip">Sound chip</label>
+        <select id="chip">
+          <option value="ay">AY-3-8910</option>
+          <option value="ym">YM2149</option>
+        </select>
+      </div>
+    </header>
+
+    <section class="panel" aria-labelledby="editor-heading">
+      <div class="panel-header">
+        <h2 id="editor-heading">Pattern</h2>
+        <div class="transport">
+          <button type="button" id="play" class="primary"><span aria-hidden="true">▶</span> Play</button>
+          <button type="button" id="update" title="Ctrl+Enter" disabled>Re-evaluate</button>
+          <button type="button" id="stop" title="Ctrl+." disabled><span aria-hidden="true">■</span> Stop</button>
+        </div>
+      </div>
+      <div id="editor"></div>
+      <div class="editor-footer">
+        <output id="status" role="status">Ready</output>
+        <p><kbd>Ctrl</kbd> + <kbd>Enter</kbd> evaluates <span aria-hidden="true">·</span> <kbd>Ctrl</kbd> + <kbd>.</kbd> stops</p>
+      </div>
+      <p id="error" role="alert" hidden></p>
+    </section>
+
+    <section class="panel" aria-labelledby="score-heading">
+      <div class="panel-header">
+        <h2 id="score-heading">Piano roll</h2>
+        <div class="legend" aria-label="Instruments">
+          <span><i class="bass"></i>Bass</span>
+          <span><i class="pluck"></i>Pluck</span>
+          <span><i class="contended"></i>Unallocated</span>
+        </div>
+      </div>
+      <div class="timeline-key"><span>Rendered history</span><span>Scheduled notes</span></div>
+      <canvas id="score" role="img" aria-label="Piano roll with rendered voices to the left of the playhead and scheduled notes to the right"></canvas>
+      <details open id="owners">
+        <summary>Chip ownership</summary>
+        <canvas id="ownership" role="img" aria-label="Rendered tone channel A, B, C, noise and envelope ownership"></canvas>
+      </details>
+    </section>
+  </main>
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

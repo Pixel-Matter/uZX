@@ -53,8 +53,8 @@ MoLookAndFeel::MoLookAndFeel() {
     setColour(TextEditor::textColourId, Theme::primary);
     // setColour(TextEditor::textColourId, Theme::textPrimary);
     // setColour(TextEditor::highlightColourId, Theme::backgroundAlt);
-    setColour(TextEditor::highlightColourId, Theme::primary);
-    setColour(TextEditor::highlightedTextColourId, Theme::background);
+    setColour(TextEditor::highlightColourId, Theme::selection);
+    setColour(TextEditor::highlightedTextColourId, Theme::textPrimary);
     setColour(TextEditor::outlineColourId, Theme::border);
     setColour(TextEditor::focusedOutlineColourId, Theme::border);
     setColour(TextEditor::shadowColourId, Theme::background);

@@ -25,42 +25,19 @@ Current release: `player-v0.7.1-alpha`, the alpha for testers (ad-hoc signed bui
 
 #### P0 — Blockers
 
-- [x] **Ad-hoc signing in CI** — sign the whole bundle with `codesign --sign -`, so the first launch is **Open Anyway** in System Settings → Privacy & Security rather than `xattr` in Terminal; README and the user guide show that step
-- [x] **DMG packaging** with an Applications symlink
-- [x] **Tracktion Engine** — the fork now sits on upstream `develop` @ `9d622faa` (2026-10-20), the last commit before upstream moved to JUCE 9, with JUCE 8.0.17-security. v3.2.0 is still upstream's latest tag; revisit JUCE 9 when v3.5 is tagged
-- [ ] **Code quality review** and refactoring, UI separation, design tokens and constants, simple LaF-based design system
-- [ ] **UX quality review** — open findings in [ux-review.md](ux-review.md); review and tweak all paddings and margins (Player, Studio, Tuning, dialogs), fonts, colours, controls, etc...
+- [ ] **Code quality review** and refactoring, UI separation; Studio's design tokens are in [TODO.md](TODO.md)
+- [ ] **UX quality review** — every Player window, dialog, menu and popup against [ux.md](ux.md) and the design tokens; findings in [ux-review.md](ux-review.md)
 - [ ] Good human proof-read **user guide** and readme, including new animated gif
-- [x] **PixelMatter.org/uZX** page, synced on releases — the README and `docs/`, deployed by CI when a Player release is published (`.github/workflows/pages.yml`)
 - [ ] **Release notes** — CHANGELOG entry for the tag
 
 #### P1 — Important
 
-- [x] **Nicer transport icons**, loop toggle icon
-- [x] **Transport follow mode** toggle — **Follow** (`Cmd+Shift+F`); Viz mode and Render Video always follow
-- [x] Decorate **env restarts** with vertical line, like timer starts
-- [x] **Readouts align right**
-- [x] Cmd-2 zoom level should be one level into, decaration limit one level outer
-- [x] Investigate **devices level** meter zones, master level zones, level knobs
-- [x] Zoom+scroll mouse guestures works with some threshold on X, Y, X+Y
-- [x] Update zxtune fork
-- [x] "check for updates" menu item
-- [x] **Playhead stepping** — Player: ←/→ a grid line, Option+←/→ a frame; stopped, the step is heard as scrubbing
-- [x] Rework tempo detection
-- [x] PSG hover shown only when minor grid step is a frame
-- [x] **Tuning in the Player** — **Settings → Tuning Tables...** (`Cmd+Shift+T`)
-- [x] **Tuning Tables…** button in the clip's **Tuning and Key…** window, which opens the Tuning Tables window
+- [ ] Piano keys/octave lanes lables should be drawn in **its own track gutters**, not in clips.
 
 #### P2 — Nice to have
 
-- [x] **Clock-mode frame grid** — frame steps divide the second (sixths and twelfths at 24/48 fps), so ticks no longer run …20, 24, 29; the frame field is three digits wide throughout at 200 fps
-- [ ] Piano keys/octave lanes lables should be drawn in **its own track gutters**, not in clips.
 - [ ] **DMG background image**, note in background how to pass the gatekeeper with "Open anyway"
 - [ ] **PDF user guide**
-- [ ] **UI themes** lignt, dark, neutral, customizable (ableton-like)
-- [ ] **Channel split mode** — each AY channel in its own lane
-- [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.
-- [ ] **Minimap** on the horizontal scroller
 
 ---
 
@@ -76,7 +53,8 @@ Grouped by theme, not ordered.
 
 **Sound**
 
-- [ ] **Three-channel AY rendering** — ayumi renders channels A, B and C as three separate outputs, with options to turn off its filter and to remove DC
+- [ ] **Three-channel AY output** — A, B and C as three separate outputs, filtered
+- [ ] **Quick soloing/muting** of ABC abd TNE channels, with keyboard (player only). Muted channels are grayed out.
 
 **Export**
 
@@ -87,18 +65,20 @@ Grouped by theme, not ordered.
 
 **Import**
 
-- [ ] **Tracker modules**, converted to PSG or TAYM on open: ProTracker 3 / Vortex Tracker II (PT3/VT2), Bitphase, ChipNomad (CN); conversion by zxtune123, its sources added as a submodule
+- [ ] **Rest tracker modules**, converted to PSG or TAYM on open: Bitphase, ChipNomad (CN)
 - [ ] AY and SNDH containers
 
 **Views**
 
-- [ ] Playlist mode — open several files, sequential play, queue
+- [ ] Player playlist mode — open several files, sequential play, queue
 - [ ] PSG params clip view (Notes and Registers views exist)
 - [ ] Live AY register monitor (the frame hover shows stored clip data, not chip state)
 - [ ] Spectrum display
 - [ ] Pianomania-like scrolling piano roll
 - [ ] Tracker-like scrolling pattern view
-- [ ] Skins/themes
+- [ ] **Skins/themes**: lignt, dark, neutral, customizable (ableton-like)
+- [ ] **Channel split mode** — each AY channel in its own lane
+- [ ] **Minimap** on the horizontal scroller
 
 **Quality**
 

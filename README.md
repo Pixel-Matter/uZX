@@ -103,7 +103,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, prerequi
 
 ## Community
 
-Join the [μZX Discord](https://discord.com/channels/1103598609804562463/1357634772666552340) for support, discussion, and to connect with other users.
+Join the [μZX Discord](https://discord.gg/SpDnXevFu9) for support, discussion, and to connect with other users.
 
 ## Contributing
 

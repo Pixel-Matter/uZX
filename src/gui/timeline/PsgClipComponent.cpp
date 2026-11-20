@@ -1070,7 +1070,7 @@ void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
     const float laneHeight = std::round(height / numRegs);
     const bool showHexValues = vis.pixelsPerFrame >= 12.0f;
 
-    g.setFont(Fonts::ui(Fonts::small).withStyle("Bold"));
+    g.setFont(FontOptions().withName(Font::getDefaultMonospacedFontName()).withPointHeight(Fonts::monoSmall));
 
     uZX::PsgRegsFrame regsFrame;
     vis.forEachVisibleFrame(frames, *psgClip, [&] (int, const PsgParamFrame& frame, float x, float width) {

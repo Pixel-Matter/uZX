@@ -102,7 +102,7 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 - Fixed: the Player played a TAYM at the clock its tuning detection guessed, not at the one the file states; a fitted tuning is now named at the file's clock, for example `12TET 440 Hz Atari ST`
 
 ### Tuning and key
-- **Tuning and Key…** has a **Tuning Tables…** button, which opens the Tuning Tables window
+- **Tuning and Key…** has a **Tuning Tables…** button, which closes it and opens the Tuning Tables window
 
 ### Look
 - Tuning Tables: a sharp note's name tints toward the app's blue and a flat one's toward its red, where they were pure blue and red

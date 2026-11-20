@@ -79,7 +79,7 @@ EditComponent::EditComponent(te::Edit& e, EditViewState& evs, EditComponentOptio
                                + describeOpenKey(edit),
                            dontSendNotification);
         emptyHint->setJustificationType(Justification::centred);
-        emptyHint->setFont(FontOptions(17.0f));
+        emptyHint->setFont(Fonts::ui(Fonts::title));
         emptyHint->setColour(Label::textColourId, Colors::Theme::textPrimary);
         emptyHint->setColour(Label::backgroundColourId, Colors::Theme::backgroundAlt);  // over the grid lines
         emptyHint->setInterceptsMouseClicks(false, false);

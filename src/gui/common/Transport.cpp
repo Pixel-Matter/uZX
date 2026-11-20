@@ -212,7 +212,7 @@ TransportBar::TransportBar(EditViewState& evs, TransportBarOptions opts)
     };
     for (auto& u : units) {
         u.label.setText(u.text, dontSendNotification);
-        u.label.setFont(FontOptions(15.0f));
+        u.label.setFont(Fonts::ui(Fonts::body));
         u.label.setColour(Label::textColourId, Colors::Theme::textSecondary);
         u.label.setBorderSize({});  // laid out at the width of its text
     }

@@ -34,7 +34,7 @@ public:
             return;
 
         const float binWidth = area.getWidth() / static_cast<float>(bins_.size());
-        g.setFont(Font(FontOptions(11.0f)));
+        g.setFont(Fonts::ui(Fonts::small));
         for (int pc = 0; pc < 12; ++pc) {
             const float x = area.getX() + static_cast<float>(pc * binsPerSemitone) * binWidth + binWidth * 0.5f;
             const bool isTonic = pc == tonic_;

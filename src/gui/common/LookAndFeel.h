@@ -204,6 +204,30 @@ struct PSG {
 
 } // namespace Colors
 
+/** The type scale, in point heights, which set the em. FontOptions(h) sets ascent plus descent
+    instead, so its sizes fall between these. At small, body and title Inter's caps and x-height
+    land on pixel edges on macOS, on Retina screens and at 1x; 14 blurs its caps. */
+namespace Fonts {
+inline constexpr float small   = 10.5f;   // legends, clip headers, rulers, labels of grids and meters
+inline constexpr float body    = 12.0f;   // dialogs, tooltips, buttons
+inline constexpr float menu    = 13.25f;  // popup menus, where 12 reads small; sharp on Retina screens
+inline constexpr float title   = 16.0f;   // the empty window's hint
+inline constexpr float readout = 15.8f;   // the transport's numbers, Iosevka Aile Semibold
+inline constexpr float mono    = 11.75f;  // Iosevka Fixed as tall as body text
+
+/** Inter, the UI's font, at a point height of the scale. */
+inline FontOptions ui(float pointHeight) { return FontOptions().withPointHeight(pointHeight); }
+
+/** The largest step of the scale no taller than pointHeight, for text sized by its control;
+    below small, pointHeight itself, so a squeezed control still fits its text. */
+inline float fit(float pointHeight) {
+    for (float step : {title, body, small})
+        if (pointHeight >= step)
+            return step;
+    return pointHeight;
+}
+} // namespace Fonts
+
 class MoLookAndFeel : public LookAndFeel_V4 {
 public:
 

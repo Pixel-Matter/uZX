@@ -660,8 +660,7 @@ public:
     }
 
     void setText(const std::vector<std::pair<String, Colour>>& runs) {
-        // Iosevka Fixed at the height of body text; 11.75 keeps its edges sharp on Retina screens
-        const Font font(FontOptions(Font::getDefaultMonospacedFontName(), 12.0f, Font::plain).withPointHeight(11.75f));
+        const Font font(FontOptions().withName(Font::getDefaultMonospacedFontName()).withPointHeight(Fonts::mono));
         AttributedString text;
         for (const auto& [run, colour] : runs)
             text.append(run, font, colour);
@@ -1071,7 +1070,7 @@ void PsgClipComponent::paintRegisters(Graphics& g, const PaintView& view) {
     const float laneHeight = std::round(height / numRegs);
     const bool showHexValues = vis.pixelsPerFrame >= 12.0f;
 
-    g.setFont(Font(FontOptions(12.0f).withStyle("Bold")));
+    g.setFont(Fonts::ui(Fonts::small).withStyle("Bold"));
 
     uZX::PsgRegsFrame regsFrame;
     vis.forEachVisibleFrame(frames, *psgClip, [&] (int, const PsgParamFrame& frame, float x, float width) {
@@ -1649,7 +1648,7 @@ struct LegendItem { const char* label; Colour color; LegendStyle style = LegendS
 constexpr int legendSpacing = 1;
 
 Font getLegendFont() {
-    return Font(FontOptions(11.0f).withStyle("Bold"));
+    return Fonts::ui(Fonts::small).withStyle("Bold");
 }
 
 /** Channel colors and the envelope-pitch appearance, with each swatch's width. */

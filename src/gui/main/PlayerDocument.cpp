@@ -66,7 +66,7 @@ private:
     }
 
     static Font nameFont() { return Fonts::ui(Fonts::body); }
-    static Font smallFont() { return Fonts::ui(Fonts::small); }
+    static Font smallFont() { return Fonts::ui(Fonts::caption); }
     static int namesWidth(const StringArray& names) {
         int width = gap * (names.size() - 1);
         for (auto& name : names)

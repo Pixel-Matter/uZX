@@ -39,7 +39,7 @@ constexpr int nameWidth = 48;      // of the name before a fact of the detection
 constexpr double onLine = 1.0e-6;  // of a frame or a beat: this near a line is on it, whatever the rounding
 
 juce::Font smallFont() {
-    return Fonts::ui(Fonts::small);
+    return Fonts::ui(Fonts::caption);
 }
 
 juce::String timeText(double seconds) {

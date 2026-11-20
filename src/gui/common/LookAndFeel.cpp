@@ -609,7 +609,7 @@ int MoLookAndFeel::getTabButtonBestWidth(TabBarButton& button, int tabDepth) {
 }
 
 Font MoLookAndFeel::getTabButtonFont(TabBarButton&, float) {
-    return withDefaultMetrics(Fonts::ui(Fonts::small));
+    return withDefaultMetrics(Fonts::ui(Fonts::caption));
 }
 
 void MoLookAndFeel::drawTabButton(TabBarButton& button, Graphics& g, bool isMouseOver, bool isMouseDown) {
@@ -650,7 +650,7 @@ void MoLookAndFeel::drawGroupComponentOutline(Graphics& g, int width, int height
                                               const String& text, const Justification& position,
                                               GroupComponent& group) {
     const float textH = 11.0f;
-    const float fontPtSize = Fonts::small;
+    const float fontPtSize = Fonts::caption;
     const float indent = 3.0f;
     const float textEdgeGap = 4.0f;
     auto cs = 5.0f;

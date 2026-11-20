@@ -1648,7 +1648,7 @@ struct LegendItem { const char* label; Colour color; LegendStyle style = LegendS
 constexpr int legendSpacing = 1;
 
 Font getLegendFont() {
-    return Fonts::ui(Fonts::small).withStyle("Bold");
+    return Fonts::ui(Fonts::caption).withStyle("Bold");
 }
 
 /** Channel colors and the envelope-pitch appearance, with each swatch's width. */

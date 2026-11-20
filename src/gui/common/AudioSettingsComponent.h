@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include "LookAndFeel.h"
+
 namespace MoTool {
 
 namespace te = tracktion;
@@ -134,7 +136,7 @@ private:
     std::unique_ptr<AudioDeviceSelectorComponent> selector_;
     juce::AudioDeviceManager::AudioDeviceSetup lastValidSetup_;
     bool reverting_ = false;
-    static constexpr int verticalPadding_ = 8;
+    static constexpr int verticalPadding_ = Space::dialog;
     static constexpr int contentWidth_ = 500;
 };
 

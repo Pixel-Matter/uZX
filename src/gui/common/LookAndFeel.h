@@ -242,7 +242,15 @@ inline constexpr int related = 8;   // siblings in a group: transport buttons, a
 inline constexpr int apart   = 12;  // items that each stand alone in a row: the transport's readouts
 inline constexpr int group   = 24;  // groups within a bar
 inline constexpr int margin  = 8;   // a panel's edges and between panels; a popup's padding
+inline constexpr int dialog  = 16;  // a dialog's or window's content from its edges
 } // namespace Space
+
+/** Sizes of controls, so rows of them line up from window to window. */
+namespace Controls {
+inline constexpr int height       = 24;   // combo boxes, text boxes and buttons in a row of controls
+inline constexpr int actionHeight = 28;   // a dialog's action buttons
+inline constexpr int actionWidth  = 100;
+} // namespace Controls
 
 class MoLookAndFeel : public LookAndFeel_V4 {
 public:
@@ -302,6 +310,13 @@ public:
         a dialog's actions, the AY channels' letters. Buttons in a row of controls stay as small as the
         labels beside them. */
     Font getTextButtonFont(TextButton&, int buttonHeight) override;
+
+    /** A label at JUCE's default height, 15, which nothing asks for on purpose, is body text. */
+    Font getLabelFont(Label& label) override;
+
+    /** JUCE's tick box, with its text at body size or smaller. */
+    void drawToggleButton(Graphics& g, ToggleButton& button, bool shouldDrawButtonAsHighlighted,
+                          bool shouldDrawButtonAsDown) override;
     static void setLargeText(Button& button) { button.getProperties().set(largeTextProperty, true); }
     static constexpr const char* largeTextProperty = "largeText";
 

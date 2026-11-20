@@ -2,6 +2,8 @@
 
 #include "JuceHeader.h"
 
+#include "../common/LookAndFeel.h"
+
 #include "../../viewmodels/tuning/TuningViewModel.h"
 #include "../../viewmodels/tuning/TuningPlayer.h"
 
@@ -152,9 +154,9 @@ private:
 
     TuningPreviewGrid tuningGrid;
 
-    static constexpr int rowHeight = 28;
+    static constexpr int rowHeight = Controls::height;  // a label's row, and a control's under it
     static constexpr int moduleWidth = 60;
-    static constexpr int gap = 8;
+    static constexpr int gap = Space::related;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TuningPreviewComponent)
 };

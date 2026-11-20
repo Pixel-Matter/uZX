@@ -21,35 +21,31 @@ The live input keeps every MIDI channel: `MidiInputDeviceNode` rewrites the chan
 
 ## The Strudel module
 
-A plain ES module, `uzx.mjs`, kept in this repository and served from a CDN that mirrors GitHub, loaded with `await import('<url>/uzx.mjs')`. No build step and no C++ change.
+**Prototype:** [`tools/krendel/uzx.mjs`](../../tools/krendel/uzx.mjs), with its tests and how to load it in [`tools/krendel/README.md`](../../tools/krendel/README.md). A plain ES module loaded in Strudel with `await import('<url>/uzx.mjs')`; no build step and no C++ change.
 
-It names the controllers MIDI to PSG reads, as listed in the user guide under **Track Devices / Plugins**. The guide is the single source of their numbers and meaning; the module copies them and a test checks the two agree.
+It reads Strudel's `registerControl`, `midimaps`, `reify` and `Pattern` from `globalThis`, where the REPL puts every export of its packages before user code runs. It registers one control per controller MIDI to PSG reads and a midimap `uzx` that sends them as CC; `.uzx(port)` is `.midimap('uzx').midi(port)`. Strudel's `.midi()` sends a hap's mapped controllers before its note, on the hap's `midichan`, at the same Web MIDI timestamp.
 
-| Strudel control | Controller | Meaning in MIDI to PSG |
+The numbers are `NoteCC` in `src/plugins/uZX/midi_effects/NoteFrame.h`; the module's test reads that header and fails when they differ. Values go through `stepToController` from the same header, so each lands in the band `controllerToStep` reads back.
+
+| Control | Controller | Value |
 | --- | --- | --- |
-| `tone` | 80 | Switch: tone on from 64 |
-| `noise` | 81 | Switch: noise on |
-| `env` | 82 | Switch: envelope on |
-| `noiseperiod` | 2 | 0 highest noise … 127 lowest |
-| `shape` | 70 | Envelope shape, eight bands of 16; the module accepts shape names |
-| `retrig` | 83 | Restart the envelope from 64 |
-| `buzz` | 85 | Notes on this channel drive the envelope |
-| `prio` | 86 | Note priority on this channel |
-| `chpan` | 10 | Preferred chip channel by place in the AY chip's layout |
+| `aytone` | 80 | 1 or 0 |
+| `aynoise` | 81 | 1 or 0 |
+| `ayenv` | 82 | 1 or 0 |
+| `ayretrig` | 83 | 1 restarts the envelope |
+| `aybuzz` | 85 | 1: the notes drive the envelope |
+| `ayshape` | 70 | `tri`, `trifall`, `saw`, `sawfall`, `attack`, `decay`, `attackcut`, `decayhold`, or 0–7, in the user guide's order |
+| `aynoiseperiod` | 2 | 0 highest noise … 31 lowest |
+| `ayprio` | 86 | 0–127 |
+| `pan` (Strudel's own) | 10 | 0 left … 1 right: the chip channel at that place in the AY chip's layout |
 
-Its surface:
+The `ay` prefix is needed: Strudel already has `noise`, `shape`, `env` and `retrig`, with other meanings. The module carries no state about the chip; Studio stays the one place that decides what sounds.
 
-- `uzxsetup({ port, channels })`: picks the Web MIDI output once and registers the names above, through Strudel's MIDI controller map if the pinned revision has one, otherwise as `ccn`/`ccv` pairs.
-- `.uzx()`: `.midi(port)` with that port, so patterns read like `note("c3 [eb3 g3]").tone(1).env(1).shape("saw").uzx()`.
-- `uzxclock()`: the clock pattern for the step below, a thin wrapper over Strudel's `midicmd`.
-
-Booleans become 0/127. Values are 7-bit, as everywhere on MIDI. The module carries no state about the chip; Studio stays the one place that decides what sounds.
-
-The names, the `midimap` hook and `midicmd` are checked against one pinned Strudel release, recorded in the module's header with the date it was tested.
+Tested in Node with the npm releases pinned in `tools/krendel/package.json` (`@strudel/core` 1.2.6, `@strudel/mini` 1.2.6, `@strudel/midi` 1.3.0). Not yet played through Studio.
 
 ## Following Strudel's clock
 
-Checked in the Tracktion source (`playback/devices/tracktion_PhysicalMidiInputDevice.cpp`): a MIDI input can chase **MTC** (`MidiTimecodeReader`, with drift correction through `EditPlaybackContext::setSpeedCompensation`) and obey **MMC** (`setReadingMidiTimecode`, `setAcceptingMMC`). Studio calls neither. Tracktion **does not read MIDI clock**: `0xF8`, Start, Continue, Stop and Song Position reach the track instances as ordinary messages and nothing acts on them. `MidiClockGenerator` exists only on outputs. Strudel's `midicmd` sends clock and Start/Stop (to be confirmed on the pinned release); nothing in Strudel sends MTC or MMC, so following it needs a reader of our own.
+Checked in the Tracktion source (`playback/devices/tracktion_PhysicalMidiInputDevice.cpp`): a MIDI input can chase **MTC** (`MidiTimecodeReader`, with drift correction through `EditPlaybackContext::setSpeedCompensation`) and obey **MMC** (`setReadingMidiTimecode`, `setAcceptingMMC`). Studio calls neither. Tracktion **does not read MIDI clock**: `0xF8`, Start, Continue, Stop and Song Position reach the track instances as ordinary messages and nothing acts on them. `MidiClockGenerator` exists only on outputs. Strudel's `midicmd` sends `clock`, `start`, `stop` and `continue`, and `.midi()` sends Start by itself for an event at cycle 0; nothing in Strudel sends MTC or MMC, so following it needs a reader of our own.
 
 Without one, live playing still works: monitoring sounds the chip whatever the transport does. A clock is needed only to record in time with the edit, or to line up Strudel with clips already on the timeline.
 
@@ -81,7 +77,7 @@ Continuous tempo following is out of scope.
 ## Order of work and acceptance
 
 1. **Guide.** A **Strudel** section in `docs/user-guide.md`: the virtual port per OS, enabling it in Audio Settings, routing it with **I**, monitoring on, a three-line example with raw `ccn`/`ccv`. This works today.
-2. **Module.** `uzx.mjs` with the table above, its pinned Strudel release, and a check that its controller numbers match the guide. Accepted when an example with a bass on channel 1 and a three-note chord on channels 2–4 plays on one chip with the expected channel stealing, and `shape`/`retrig` change the envelope audibly.
+2. **Module.** Prototype done, with Node tests. Accepted when an example with a bass on channel 1 and a three-note chord on channels 2–4 plays on one chip with the expected channel stealing, and `ayshape`/`ayretrig` change the envelope audibly.
 3. **Clock, transport only.** `MidiClockFollower` with unit tests feeding message sequences (Start, ticks at 120 BPM, Stop, SPP) into it and checking the transport calls and measured tempo. Accepted when Strudel's Start/Stop starts and stops Studio at the edit start, and a recording of the live notes lands on the beats.
 4. **Clock, tempo on Start.** Only after step 3 is used in practice.
 

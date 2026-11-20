@@ -45,6 +45,10 @@ struct EnvelopeShapeEnum
     };
 };
 
+constexpr bool isTriangle(EnvelopeShapeEnum::Enum shape) noexcept {
+    return shape == EnvelopeShapeEnum::Triangle || shape == EnvelopeShapeEnum::TriangleDown;
+}
+
 /** The register value for the sounding version of a shape. */
 constexpr int toRegister(EnvelopeShapeEnum::Enum shape) noexcept {
     constexpr std::array<int, 8> registers{14, 10, 12, 8, 13, 9, 15, 11};

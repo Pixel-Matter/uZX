@@ -2,47 +2,37 @@
 
 #include <utility>
 
+#include "../../../chip/PsgRenderer.h"
 #include "../../../models/tuning/TuningRegistry.h"
 
 namespace MoTool::uZX {
 
 //==============================================================================
-PsgParamFrameData ChipMixer::render(const ChipAllocator::Voices& voices, const TuningSystem& tuning) noexcept {
-    PsgParamFrameData params;
-    const auto set = [&](PsgParamType param, int value) { params.set(param, static_cast<uint16_t>(value)); };
-    // A note the tuning has no period for leaves the period as it is
-    const auto setPeriod = [&](PsgParamType param, const NoteVoice& voice, TuningSystem::PeriodMode mode) {
-        if (const auto period = tuning.midiNoteToPeriod(voice.pitch, mode); period != 0)
-            set(param, period);
-    };
-
-    for (int n = 0; n < numToneChannels; ++n) {
-        const auto* voice = voices.channels[static_cast<size_t>(n)];
-        // With its envelope on a channel sounds whatever its volume, so silence turns both off
-        set(PsgParamType::VolumeA + n, voice != nullptr ? roundToInt(voice->level * 15.0f) : 0);
-        set(PsgParamType::EnvelopeIsOnA + n, voice != nullptr && voice->timbre.envelope);
-        if (voice == nullptr)
-            continue;
-        setPeriod(PsgParamType::TonePeriodA + n, *voice, TuningSystem::Tone);
-        set(PsgParamType::ToneIsOnA + n, voice->timbre.tone);
-        set(PsgParamType::NoiseIsOnA + n, voice->timbre.noise);
-    }
-
-    if (const auto* voice = voices.noise)
-        set(PsgParamType::NoisePeriod, voice->timbre.noisePeriod);
-
-    if (const auto* voice = voices.envelope) {
-        setPeriod(PsgParamType::EnvelopePeriod, *voice, envelopePeriodMode(voice->timbre.envelopeShape));
-        set(PsgParamType::EnvelopeShape, toRegister(voice->timbre.envelopeShape));
-        // Only when the voice asks: a note that starts or lasts lets the envelope run
-        if (voice->restartEnvelope)
-            set(PsgParamType::RetriggerEnvelope, 1);
-    }
-    return params;
-}
-
 PsgParamFrameData ChipMixer::mix(const NoteFrame& frame, const TuningSystem& tuning) noexcept {
-    return render(allocator_.allocate(frame), tuning);
+    const auto patch = renderPsg(allocator_.allocate(frame), [&](double pitch, PsgPeriodMode mode) {
+        constexpr std::array modes{TuningSystem::Tone, TuningSystem::Envelope, TuningSystem::EnvelopeTriangle};
+        return tuning.midiNoteToPeriod(pitch, modes[static_cast<std::size_t>(mode)]);
+    });
+
+    PsgParamFrameData params;
+    const auto setIfPresent = [&](PsgParamType param, const auto& value) {
+        if (value.has_value())
+            params.set(param, static_cast<uint16_t>(*value));
+    };
+    for (int n = 0; n < numToneChannels; ++n) {
+        const auto& channel = patch.channels[static_cast<std::size_t>(n)];
+        params.set(PsgParamType::VolumeA + n, channel.volume);
+        params.set(PsgParamType::EnvelopeIsOnA + n, channel.envelopeOn);
+        setIfPresent(PsgParamType::TonePeriodA + n, channel.tonePeriod);
+        setIfPresent(PsgParamType::ToneIsOnA + n, channel.toneOn);
+        setIfPresent(PsgParamType::NoiseIsOnA + n, channel.noiseOn);
+    }
+    setIfPresent(PsgParamType::NoisePeriod, patch.noisePeriod);
+    setIfPresent(PsgParamType::EnvelopePeriod, patch.envelopePeriod);
+    setIfPresent(PsgParamType::EnvelopeShape, patch.envelopeShape);
+    if (patch.retriggerEnvelope)
+        params.set(PsgParamType::RetriggerEnvelope, 1);
+    return params;
 }
 
 //==============================================================================

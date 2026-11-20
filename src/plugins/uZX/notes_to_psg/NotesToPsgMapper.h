@@ -33,8 +33,6 @@ public:
     void setChannelPans(const std::array<double, numToneChannels>& pans) noexcept { allocator_.setChannelPans(pans); }
 
 private:
-    static PsgParamFrameData render(const ChipAllocator::Voices& voices, const TuningSystem& tuning) noexcept;
-
     ChipAllocator allocator_;
 };
 

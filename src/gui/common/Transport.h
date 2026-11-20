@@ -34,6 +34,25 @@ private:
 };
 
 
+/** A readout that picks its value from a menu, not typed text: a click opens it, and a screen reader can
+    press it, as a pop-up button. */
+class MenuReadout : public Label {
+public:
+    MenuReadout() = default;
+
+    /** Shows the menu of values to pick from. */
+    std::function<void()> onShowMenu;
+
+    void mouseDown(const MouseEvent&) override;
+    std::unique_ptr<AccessibilityHandler> createAccessibilityHandler() override;
+
+private:
+    void showMenu();
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MenuReadout)
+};
+
+
 struct TransportBarOptions {
     bool showRecord = true;
     bool showAutomation = true;
@@ -76,7 +95,6 @@ public:
 
     void paint(Graphics& g) override;
     void resized() override;
-    void mouseDown(const MouseEvent&) override;
 
 private:
     /** Lit while Follow is on, dim while suspended; its icon shows by page or by scroll. A click invokes Follow,
@@ -114,7 +132,7 @@ private:
     //   [ 125.00 ] bpm  [ 50 ] fps  [ 24 ] fpb  [ 6 6 6 6 ] groove  [ 4/4 ] sig   (buttons)   pos [ 5.2.12 ]
     EditableReadout bpmControl_;
     EditableReadout fpbControl_;
-    Label fpsLabel_;        // click opens a popup of allowed rates
+    MenuReadout fpsLabel_;  // opens a popup of allowed rates
     Label divControl_;
     Label timeSigLabel_;    // editable: "3/4", "6/8" or a bare numerator
     Label bpmUnitLabel_, fpsUnitLabel_, fpbUnitLabel_, divUnitLabel_, sigUnitLabel_;

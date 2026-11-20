@@ -17,6 +17,9 @@ public:
     void setCloseHandler(std::function<void()> handler);
     void closeButtonPressed() override;
     void resized() override;
+    /** Tab moves no focus, here or in a readout being typed in: the keys stay with playback and the
+        commands (docs/ux.md). */
+    bool keyPressed(const KeyPress&) override;
     void restoreWindowBounds();
     void saveWindowBounds();
 

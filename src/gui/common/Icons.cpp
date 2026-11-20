@@ -92,7 +92,9 @@ void drawOnButton(Graphics& g, const TextButton& button, const Path& icon, Recta
 }  // namespace Icons
 
 //==============================================================================
-IconButton::IconButton(const String& name, const Path& icon) : TextButton(name), icon_(&icon) {}
+IconButton::IconButton(const String& name, const Path& icon) : TextButton(name), icon_(&icon) {
+    setWantsKeyboardFocus(false);  // the keys stay with playback and the commands (docs/ux.md)
+}
 
 void IconButton::setIcon(const Path& icon) {
     icon_ = &icon;

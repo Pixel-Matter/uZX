@@ -13,6 +13,8 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 ### Accessibility
 - Screen readers name the transport's readouts and master volume, the chip's knobs and A, B and C scopes, and the level meters
 - Viz mode's hint shows the options not chosen in a brighter grey, readable at 4.5:1
+- Fixed: a screen reader read the transport's **fps** readout as text; it is a pop-up button that opens the rates
+- Fixed: after a click on the chip clock, the arrows changed the clock instead of stepping the playhead; after a click on a button, `Return` pressed it again. Buttons, knobs and menus no longer take the keys, and `Tab` moves nothing
 - Fixed: the chip's Volume and Width knobs had "μZX AY Emulator >> volume" as their tooltip; it says what they are, such as "Output volume"
 
 ### Audio settings

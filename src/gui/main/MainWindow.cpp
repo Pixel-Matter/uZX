@@ -44,6 +44,10 @@ void MainWindow::resized() {
     saveWindowBounds();
 }
 
+bool MainWindow::keyPressed(const KeyPress& key) {
+    return key.isKeyCode(KeyPress::tabKey) || DocumentWindow::keyPressed(key);
+}
+
 void MainWindow::saveWindowBounds() {
     if (!windowBoundsRestored_)
         return; // Don't save if we haven't restored yet (first run)

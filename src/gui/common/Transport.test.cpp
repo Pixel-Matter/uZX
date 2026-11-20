@@ -97,6 +97,22 @@ public:
                     expectEquals(knob->getTitle(), String("Master volume"));
         }
 
+        beginTest("No button, knob or menu in the bar takes the keys: after a click they still play and step");
+        {
+            auto edit = tracktion::Edit::createSingleTrackEdit(engine);
+            tracktion::SelectionManager selectionManager(engine);
+            EditViewState viewState(*edit, selectionManager);
+            TransportBar bar(viewState);  // Studio's, with the record and automation buttons
+            int controls = 0;
+            for (auto* c : bar.getChildren())
+                if (dynamic_cast<Button*>(c) != nullptr || dynamic_cast<Slider*>(c) != nullptr
+                    || dynamic_cast<MenuReadout*>(c) != nullptr) {
+                    ++controls;
+                    expect(! c->getWantsKeyboardFocus(), c->getName());
+                }
+            expect(controls >= 9, "rewind, play, record, loop, follow, read, write, volume and fps");
+        }
+
         beginTest("The Player shows no readouts before a tune is open, only values a tune has given");
         {
             const auto bpmShown = [](TransportBar& bar) {

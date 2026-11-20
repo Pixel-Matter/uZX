@@ -18,6 +18,8 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
     , track(t)
 {
     ::Helpers::addAndMakeVisible(*this, { &trackName, &armButton, &muteButton, &soloButton, &inputButton });
+    for (auto* button : {&armButton, &muteButton, &soloButton, &inputButton})
+        button->setWantsKeyboardFocus(false);  // the keys stay with playback and the commands (docs/ux.md)
 
     armButton.setColour( TextButton::buttonOnColourId, Colors::Theme::muted);
     muteButton.setColour(TextButton::buttonOnColourId, Colors::Theme::muted);
@@ -550,6 +552,7 @@ void TrackRowComponent::resized() {
     resizer.setBounds(r.removeFromBottom(dividerHeight_));
 
     header.setBounds(r.removeFromLeft(headerWidth));
+    header.setVisible(headerWidth > 0);  // the Player's: 0 px wide, its name and buttons were still in the accessibility tree
     if (footer != nullptr)
         footer->setBounds(takeFooterArea(r));
     body.setBounds(r);

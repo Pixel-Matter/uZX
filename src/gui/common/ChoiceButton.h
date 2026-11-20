@@ -18,6 +18,7 @@ public:
         : binding(*this, makeResolveParamEndpoint(plugin, value))
     {
         binding.midiMapping.addChangeListener(this);
+        setWantsKeyboardFocus(false);  // the keys stay with playback and the commands (docs/ux.md)
     }
 
     ~ChoiceButton() override {

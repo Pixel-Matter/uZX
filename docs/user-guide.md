@@ -393,7 +393,7 @@ Click a cell to preview the note through the AY emulator using the current play 
 
 ## Keyboard and Mouse
 
-`Cmd` is `Ctrl` and `Option` is `Alt` on Windows and Linux; on a Mac, `Ctrl`+click works as a right-click. Keys are ignored while a text field is being edited.
+`Cmd` is `Ctrl` and `Option` is `Alt` on Windows and Linux; on a Mac, `Ctrl`+click works as a right-click. Keys are ignored while a text field is being edited. Buttons, knobs and menus never take the keys, and `Tab` moves nothing: after a click on one, the keys still play and step.
 
 ### Keyboard
 

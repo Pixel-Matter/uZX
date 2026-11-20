@@ -233,6 +233,28 @@ Font MoLookAndFeel::getSmallFont(float pointHeigth) {
     return withDefaultMetrics(FontOptions().withPointHeight(jlimit(1.0f, 16.0f, pointHeigth)));
 }
 
+Font MoLookAndFeel::getLabelFont(Label& label) {
+    const auto font = label.getFont();
+    if (std::abs(font.getHeight() - 15.0f) < 0.01f && ! font.getTypefaceName().containsIgnoreCase("Iosevka"))
+        return Font(withDefaultMetrics(Fonts::ui(Fonts::body))).withStyle(font.getStyleFlags());
+    return font;
+}
+
+void MoLookAndFeel::drawToggleButton(Graphics& g, ToggleButton& button, bool shouldDrawButtonAsHighlighted,
+                                     bool shouldDrawButtonAsDown) {
+    const auto tickWidth = jmin(15.0f, (float) button.getHeight() * 0.75f) * 1.1f;  // as JUCE's
+    drawTickBox(g, button, 4.0f, ((float) button.getHeight() - tickWidth) * 0.5f, tickWidth, tickWidth,
+                button.getToggleState(), button.isEnabled(), shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+
+    g.setColour(button.findColour(ToggleButton::textColourId));
+    g.setFont(withDefaultMetrics(Fonts::ui(Fonts::fit(jmin(Fonts::body, (float) button.getHeight() * 0.6f)))));
+    if (! button.isEnabled())
+        g.setOpacity(0.5f);
+    g.drawFittedText(button.getButtonText(),
+                     button.getLocalBounds().withTrimmedLeft(roundToInt(tickWidth) + 10).withTrimmedRight(2),
+                     Justification::centredLeft, 10);
+}
+
 Font MoLookAndFeel::getComboBoxFont(ComboBox& box) {
     return withDefaultMetrics(Fonts::ui(Fonts::fit(jmin(Fonts::body, (float) box.getHeight() * 0.7f))));
 }

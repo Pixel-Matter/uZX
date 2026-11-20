@@ -267,12 +267,11 @@ TuningPreviewComponent::~TuningPreviewComponent() {
 
 
 void TuningPreviewComponent::resized() {
-    auto bounds = getLocalBounds().reduced(20, 20);
-    bounds.removeFromTop(-8);
+    auto bounds = getLocalBounds().reduced(Space::dialog);
 
     // Left column: Tuning table selection
     auto leftColumn = bounds.removeFromLeft(moduleWidth * 4);
-    bounds.removeFromLeft(20);
+    bounds.removeFromLeft(Space::group);
 
     tuningTableLabel.setBounds(leftColumn.removeFromTop(rowHeight));
     tuningsListBox.setBounds(leftColumn);
@@ -281,7 +280,7 @@ void TuningPreviewComponent::resized() {
     layoutControlSections(bounds);
 
     // Reserve space for export button
-    auto exportArea = bounds.removeFromBottom(rowHeight);
+    auto exportArea = bounds.removeFromBottom(Controls::actionHeight);
     bounds.removeFromBottom(gap);
 
     tuningGrid.setBounds(bounds);
@@ -306,7 +305,7 @@ void TuningPreviewComponent::layoutControlSections(juce::Rectangle<int>& area) {
     // formArea.removeFromTop(row1.getHeight() + gap);
     playControls.layout(row2);
 
-    area.removeFromTop(gap * 2);
+    area.removeFromTop(Space::group);  // the form, then the grid
 }
 
 void TuningPreviewComponent::paint(juce::Graphics& g) {

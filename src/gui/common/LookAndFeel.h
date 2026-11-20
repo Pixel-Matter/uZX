@@ -230,6 +230,17 @@ inline float fit(float pointHeight) {
 }
 } // namespace Fonts
 
+/** Gaps by what they separate, on a 4 px grid: the closer two things belong, the smaller the gap
+    between them, so the layout shows the hierarchy. Name the relationship, not the size. */
+namespace Space {
+inline constexpr int inset   = 4;   // text and icons from their own control's edge
+inline constexpr int tight   = 4;   // a label to its value; the parts of one control
+inline constexpr int related = 8;   // siblings in a group: transport buttons, a panel's rows, devices
+inline constexpr int apart   = 12;  // items that each stand alone in a row: the transport's readouts
+inline constexpr int group   = 24;  // groups within a bar
+inline constexpr int margin  = 8;   // a panel's edges and between panels; a popup's padding
+} // namespace Space
+
 class MoLookAndFeel : public LookAndFeel_V4 {
 public:
 
@@ -300,6 +311,8 @@ public:
                  bool isSelected, const Colour& clipColor);
 
     static TextLayout layoutTooltipText(TypefaceMetricsKind metrics, const String& text, Colour colour) noexcept;
+    /** A tooltip's text from its edges: a popup's padding across, a control's inset down, for one line. */
+    static constexpr int tooltipPadX = Space::margin, tooltipPadY = Space::inset;
 
     Rectangle<int> getTooltipBounds(const String& tipText, Point<int> screenPos, Rectangle<int> parentArea) override;
 

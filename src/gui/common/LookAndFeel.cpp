@@ -573,8 +573,8 @@ TextLayout MoLookAndFeel::layoutTooltipText(TypefaceMetricsKind metrics, const S
 Rectangle<int> MoLookAndFeel::getTooltipBounds(const String& tipText, Point<int> screenPos, Rectangle<int> parentArea) {
     const TextLayout tl(layoutTooltipText(getDefaultMetricsKind(), tipText, findColour(TooltipWindow::textColourId)));
 
-    auto w = (int) (tl.getWidth() + 14.0f);
-    auto h = (int) (tl.getHeight() + 6.0f);
+    auto w = (int) tl.getWidth() + 2 * tooltipPadX;
+    auto h = (int) tl.getHeight() + 2 * tooltipPadY;
 
     return Rectangle<int>(screenPos.x > parentArea.getCentreX() ? screenPos.x - (w + 12) : screenPos.x + 24,
                           screenPos.y > parentArea.getCentreY() ? screenPos.y - (h + 6)  : screenPos.y + 6,
@@ -584,7 +584,7 @@ Rectangle<int> MoLookAndFeel::getTooltipBounds(const String& tipText, Point<int>
 
 void MoLookAndFeel::drawTooltip(Graphics& g, const String& text, int width, int height) {
     Rectangle<int> bounds(width, height);
-    int hPad = 7, vPad = 3;
+    const int hPad = tooltipPadX, vPad = tooltipPadY;
     auto cornerSize = 5.0f;
 
     g.setColour(findColour(TooltipWindow::backgroundColourId));

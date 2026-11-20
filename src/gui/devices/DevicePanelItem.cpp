@@ -115,8 +115,8 @@ void TitleBar::paint(Graphics& g) {
             }
         } else {
             // Draw plugin name, accounting for button and menu controls
-            int textX = buttonWidth + buttonMargin * 2 + 4;
-            int rightMargin = menuButton_.isVisible() ? (buttonWidth + buttonMargin * 2 + 4) : 4;
+            int textX = buttonWidth + buttonMargin * 2 + Space::inset;
+            int rightMargin = menuButton_.isVisible() ? (buttonWidth + buttonMargin * 2 + Space::inset) : Space::inset;
             auto textBounds = Rectangle<int>(textX, 0, getWidth() - textX - rightMargin, getHeight());
             g.drawText(plugin_->getName(), textBounds, Justification::centredLeft, true);
         }

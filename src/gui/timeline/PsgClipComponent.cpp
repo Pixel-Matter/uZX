@@ -679,7 +679,7 @@ public:
     }
 
 private:
-    static constexpr int pad = 6;
+    static constexpr int pad = Space::margin;
     TextLayout layout_;
 };
 
@@ -1241,8 +1241,8 @@ void PsgClipComponent::paintWarnings(Graphics& g) {
     auto* psgClip = getPsgClip();
     if (psgClip == nullptr)
         return;
-    constexpr int pad = ClipHeader::pad, chipHeight = 12;
-    auto row = getShownArea(*this).reduced(pad).withHeight(chipHeight);
+    constexpr int chipHeight = 12;
+    auto row = getShownArea(*this).reduced(ClipHeader::padX, ClipHeader::padY).withHeight(chipHeight);
     // clear of the note lanes' keys and names
     if ((int) clip->state.getProperty(IDs::paintMode, 0) == 0)
         if (const auto view = getLaneView(*psgClip, getLocalBounds(), getViewPaintView().visibleX))
@@ -1252,7 +1252,7 @@ void PsgClipComponent::paintWarnings(Graphics& g) {
         if (width > row.getWidth())
             break;
         ClipHeader::paintWarning(g, row.removeFromLeft(width), warning);
-        row.removeFromLeft(pad);
+        row.removeFromLeft(ClipHeader::gap);
     }
 }
 

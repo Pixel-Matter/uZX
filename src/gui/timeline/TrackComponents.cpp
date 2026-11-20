@@ -218,18 +218,14 @@ void TrackHeaderComponent::mouseDown (const MouseEvent&) {
 }
 
 void TrackHeaderComponent::resized() {
-    auto r = getLocalBounds().reduced(4, 0);
+    auto r = getLocalBounds().reduced(Space::inset, 0);
     trackName.setBounds(r.removeFromTop(8 + roundToInt(trackName.getFont().getHeight())));
     int w = 20;
     r.setHeight(w);
-    inputButton.setBounds(r.removeFromLeft(w));
-    r.removeFromLeft(2);
-    armButton.setBounds(r.removeFromLeft(w));
-    r.removeFromLeft(2);
-    muteButton.setBounds(r.removeFromLeft(w));
-    r.removeFromLeft(2);
-    soloButton.setBounds(r.removeFromLeft(w));
-    r.removeFromLeft(2);
+    for (auto* button : {&inputButton, &armButton, &muteButton, &soloButton}) {
+        button->setBounds(r.removeFromLeft(w));
+        r.removeFromLeft(Space::tight);
+    }
 }
 
 //==============================================================================

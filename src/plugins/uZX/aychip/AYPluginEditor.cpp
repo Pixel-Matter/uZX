@@ -153,9 +153,9 @@ void AYScopes::paint(Graphics& g) {
 }
 
 Rectangle<int> AYScopes::getTimerSignBounds(size_t chan) const {
-    constexpr int size = 13, margin = 3;  // the icon's grid has its own margin: the stopwatch is about 11 px
+    constexpr int size = 13;  // the icon's grid has its own margin: the stopwatch is about 11 px
     const auto scope = displays_[chan]->getBounds();
-    return {scope.getRight() - size - margin, scope.getY() + margin, size, size};
+    return {scope.getRight() - size - Space::inset, scope.getY() + Space::inset, size, size};
 }
 
 uint8_t AYScopes::findTimerSigns() const {
@@ -290,29 +290,29 @@ void AYPluginUI::paint(Graphics& g) {
 }
 
 void AYPluginUI::resized() {
-    auto r = getLocalBounds().reduced(8, 8);
+    auto r = getLocalBounds().reduced(Space::margin);
 
     // static
     auto staticRow = r.removeFromTop(itemHeight);
     const auto buttonWidth = jmin(staticRow.getWidth() / 4 - 8, maxButtonWidth);
     chipTypeButton.setBounds(staticRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, itemHeight));
-    staticRow.removeFromLeft(8);
+    staticRow.removeFromLeft(Space::related);
     if (timerWarning_.isVisible())
         timerWarning_.setBounds(staticRow.removeFromRight(itemHeight));
     chipClockCombo.setBounds(staticRow.withSizeKeepingCentre(staticRow.getWidth(), 20));
 
     // automatable
-    r.removeFromTop(itemSpacing * 2);
+    r.removeFromTop(Space::related);
     auto knobsRow = r.removeFromTop(itemHeight * 2);
 
     layoutButton.setBounds(knobsRow.removeFromLeft(buttonWidth).withSizeKeepingCentre(buttonWidth, itemHeight));
 
-    knobsRow.removeFromLeft(8);
+    knobsRow.removeFromLeft(Space::related);
     stereoKnob.setBounds(knobsRow.removeFromLeft(knobsRow.getWidth() / 2));
     volumeKnob.setBounds(knobsRow);
 
     // Channel and effect toggles + scope displays
-    r.removeFromTop(itemSpacing * 2);
+    r.removeFromTop(Space::related);
     auto col = r.removeFromLeft(buttonWidth);
     const float h = ((float) col.getHeight() - itemSpacing * 2.0f) / 3.0f;
 
@@ -322,13 +322,13 @@ void AYPluginUI::resized() {
     }
 
     // the scopes to the right, level with the channel groups
-    r.removeFromLeft(itemSpacing * 2);
+    r.removeFromLeft(Space::related);
     scopes_.setBounds(r);
 }
 
 int AYPluginUI::getMinimumHeight() const {
     // as resized() lays it out: margins, the chip row, the knobs, then three channel groups of T, N and E
-    constexpr int margins = 2 * 8, gaps = 2 * (2 * itemSpacing);
+    constexpr int margins = 2 * Space::margin, gaps = 2 * Space::related;
     constexpr int channels = 3 * (3 * minToggleHeight) + 2 * itemSpacing;
     return margins + itemHeight + gaps + 2 * itemHeight + channels;
 }

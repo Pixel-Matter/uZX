@@ -19,8 +19,7 @@ using EnvelopeShape = MoTool::Util::EnumChoice<EnvelopeShapeEnum>;
 /** How the tuning turns a pitch into the period of an envelope of this shape, so that the shape sounds at
     that pitch: a triangle takes two periods to repeat where a sawtooth takes one. */
 constexpr TuningSystem::PeriodMode envelopePeriodMode(EnvelopeShape shape) noexcept {
-    return shape == EnvelopeShape::Triangle || shape == EnvelopeShape::TriangleDown ? TuningSystem::EnvelopeTriangle
-                                                                                    : TuningSystem::Envelope;
+    return isTriangle(shape) ? TuningSystem::EnvelopeTriangle : TuningSystem::Envelope;
 }
 
 }  // namespace MoTool::uZX

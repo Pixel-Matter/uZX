@@ -27,7 +27,7 @@ public:
     }
 
     void paint(Graphics& g) override {
-        g.setColour(Colours::black.withAlpha(0.8f));
+        g.setColour(Colors::Theme::dark.withAlpha(0.8f));
         g.fillRoundedRectangle(getLocalBounds().toFloat(), (float) pad);
 
         auto r = getLocalBounds().reduced(pad * 2, pad);

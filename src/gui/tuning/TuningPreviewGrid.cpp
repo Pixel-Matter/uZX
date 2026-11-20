@@ -100,9 +100,9 @@ void TuningPreviewGrid::paintNoteCell(juce::Graphics& g, const juce::Rectangle<i
 
     auto noteTextColor = Colors::Theme::textPrimary;
     if (offtune > 0.05f) {
-        noteTextColor = noteTextColor.interpolatedWith(juce::Colours::blue, offtune * 2);
-    } else if (offtune < 0.05f) {
-        noteTextColor = noteTextColor.interpolatedWith(juce::Colours::red, -offtune * 2);
+        noteTextColor = noteTextColor.interpolatedWith(Colors::Theme::primary, offtune * 2);
+    } else if (offtune < -0.05f) {
+        noteTextColor = noteTextColor.interpolatedWith(Colors::Theme::error, -offtune * 2);
     }
 
     // Check if this note is currently playing

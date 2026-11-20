@@ -429,9 +429,6 @@ void PlayButton::showState() {
 void TransportBar::updateRecordButton(bool isRecording) {
     recordButton_.setIcon(isRecording ? Icons::stop() : Icons::record());
     recordButton_.setColour(TextButton::textColourOnId, Colors::Theme::error);
-    // recordButton_.setColour(TextButton::buttonOnColourId, isRecording ?
-    //                         recordButton_.findColour(TextButton::textColourOnId)
-    //                         : Colours::red);
 }
 
 void TransportBar::updateAutomationButtons() {

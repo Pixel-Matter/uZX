@@ -1,5 +1,7 @@
 #include "NoteLanes.h"
 
+#include "../common/LookAndFeel.h"
+
 #include <cmath>
 
 namespace MoTool {
@@ -27,7 +29,7 @@ void paintPianoKeys(Graphics& g, const std::vector<NoteLane>& lanes, const Notes
     if (damage.getX() >= x + whiteKeyWidth || damage.getRight() <= x)
         return;
 
-    g.setColour(Colours::white.withAlpha(0.85f));
+    g.setColour(Colors::Theme::light.withAlpha(0.85f));
     g.fillRect(x, 0.0f, whiteKeyWidth, layout.height);
     for (const auto& lane : lanes) {
         // Whole pixels, so neighbouring keys neither overlap nor leave seams.
@@ -36,12 +38,12 @@ void paintPianoKeys(Graphics& g, const std::vector<NoteLane>& lanes, const Notes
             continue;
 
         if (MidiMessage::isMidiNoteBlack(lane.note)) {
-            g.setColour(Colours::black.withAlpha(0.85f));
+            g.setColour(Colors::Theme::dark.withAlpha(0.85f));
             g.fillRect(x, top, blackKeyWidth, bottom - top);
-            g.setColour(Colours::black.withAlpha(0.5f));
+            g.setColour(Colors::Theme::dark.withAlpha(0.5f));
             g.drawHorizontalLine(roundToInt((top + bottom) * 0.5f), x + blackKeyWidth, x + whiteKeyWidth);
         } else if (lane.note % 12 == 0 || lane.note % 12 == 5) {  // B|C and E|F have no black key between
-            g.setColour(Colours::black.withAlpha(0.5f));
+            g.setColour(Colors::Theme::dark.withAlpha(0.5f));
             g.drawHorizontalLine(roundToInt(bottom), x, x + whiteKeyWidth);
         }
     }
@@ -167,14 +169,14 @@ void paintNoteLanes(Graphics& g,
                 continue;
             const bool onBlackKey = pianoKeys && MidiMessage::isMidiNoteBlack(lane.note);
             const float nameX = onBlackKey ? x : labelX;
-            const auto ink = pianoKeys && !onBlackKey ? Colours::black : Colours::white;
+            const auto ink = pianoKeys && !onBlackKey ? Colors::Theme::dark : Colors::Theme::light;
             g.setColour(ink.withAlpha(isTonic ? 0.8f : 0.45f));
             g.drawText(lane.label,
                        Rectangle<float>(nameX, top, labelX + labelWidth - nameX, bottom - top),
                        Justification::centredLeft,
                        false);
         } else if (isTonic) {
-            g.setColour(Colours::white.withAlpha(0.45f));
+            g.setColour(Colors::Theme::light.withAlpha(0.45f));
             g.drawText(lane.label,
                        Rectangle<float>(labelX, bottom - tonicLabelHeight, labelWidth, tonicLabelHeight),
                        Justification::bottomLeft,

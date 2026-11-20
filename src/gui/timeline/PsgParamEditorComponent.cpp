@@ -274,9 +274,9 @@ void PsgParamEditorComponent::paint(Graphics& g) {
         const String text(std::string(currentParam.getLabel()));
         g.setFont(13.0f);
         const auto tw = GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text);
-        g.setColour(Colours::white);
+        g.setColour(Colors::Theme::light);
         g.fillRect(8, 0, tw + 8, 16);
-        g.setColour(Colours::black);
+        g.setColour(Colors::Theme::dark);
         g.drawText(text, 12, 0, tw + 6, 16, Justification::left, true);
     }
 
@@ -308,7 +308,7 @@ void PsgParamEditorComponent::paint(Graphics& g) {
                 break;
         }
 
-        g.setColour(Colours::white);
+        g.setColour(Colors::Theme::light);
         g.strokePath(curvePath, PathStrokeType(highlighted ? 1.0f : 0.5f));
     }
 
@@ -317,7 +317,7 @@ void PsgParamEditorComponent::paint(Graphics& g) {
     if (currentParam == PsgParamType::EnvelopeShape || currentParam == PsgParamType::EnvelopePeriod
         || currentParam == PsgParamType::RetriggerEnvelope) {
         const PsgParamList restarts(*clip, PsgParamType::RetriggerEnvelope);
-        g.setColour(Colours::white.withAlpha(0.4f));
+        g.setColour(Colors::Theme::light.withAlpha(0.4f));
         for (int i = jmax(0, restarts.findIndex(view.getStart()) - 1); i < restarts.size(); ++i) {
             if (! restarts.isActive(i) || restarts.getValue(i) <= 0.0f)
                 continue;
@@ -349,9 +349,9 @@ void PsgParamEditorComponent::paint(Graphics& g) {
         fills.addWithoutMerging(r.reduced(1.0f));
     }
 
-    g.setColour(Colours::black);
+    g.setColour(Colors::Theme::dark);
     g.fillRectList(rects);
-    g.setColour(Colours::white);
+    g.setColour(Colors::Theme::light);
     g.fillRectList(fills);
 }
 

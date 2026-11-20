@@ -1,5 +1,6 @@
 #include "Footer.h"
 
+#include "../common/LookAndFeel.h"
 #include "../common/Utilities.h"
 
 using namespace juce;
@@ -23,7 +24,7 @@ FooterBar::FooterBar(te::Engine& engine)
     {
         DialogWindow::LaunchOptions o;
         o.dialogTitle                   = TRANS("Plugins");
-        o.dialogBackgroundColour        = juce::Colours::black;
+        o.dialogBackgroundColour        = Colors::Theme::background;
         o.escapeKeyTriggersCloseButton  = true;
         o.useNativeTitleBar             = true;
         o.resizable                     = true;

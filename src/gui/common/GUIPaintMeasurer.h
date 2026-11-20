@@ -3,6 +3,8 @@
 #include <JuceHeader.h>
 #include <atomic>
 
+#include "LookAndFeel.h"
+
 namespace MoTool {
 
 //==============================================================================
@@ -125,13 +127,13 @@ public:
         );
 
         // Semi-transparent background
-        g.setColour(juce::Colours::black.withAlpha(0.6f));
+        g.setColour(Colors::Theme::dark.withAlpha(0.6f));
         g.fillRoundedRectangle(textBounds.toFloat(), 3.0f);
 
         // Text color based on performance (paint time)
-        juce::Colour textColour = ms < 8.0 ? juce::Colours::lightgreen
-                                 : ms < 16.0 ? juce::Colours::yellow
-                                 : juce::Colours::red;
+        juce::Colour textColour = ms < 8.0 ? Colors::Meter::low
+                                 : ms < 16.0 ? Colors::Meter::mid
+                                 : Colors::Meter::high;
 
         g.setColour(textColour);
         g.drawText(text, textBounds, juce::Justification::centred);

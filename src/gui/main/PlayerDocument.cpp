@@ -74,7 +74,7 @@ private:
         return width;
     }
 
-    static constexpr int pad = 8, gap = 24, keyWidth = 16, lineHeight = 24, leaveHeight = 20, shownMs = 2500;
+    static constexpr int pad = Space::margin, gap = Space::group, keyWidth = 16, lineHeight = 24, leaveHeight = 20, shownMs = 2500;
     inline static const String leave = "Esc leaves";
     const std::array<Line, 2> lines_;
 };
@@ -109,7 +109,7 @@ void PlayerDocumentComponent::resized() {
     auto r = getLocalBounds();
     if (transportBar_.isVisible())
         transportBar_.setBounds(r.removeFromTop(TransportBar::height));
-    editComponent_.setBounds(r.withTrimmedLeft(8));
+    editComponent_.setBounds(r.withTrimmedLeft(Space::margin));
     if (vizHint_ != nullptr)
         vizHint_->setTopLeftPosition((getWidth() - vizHint_->getWidth()) / 2, 24);
 }

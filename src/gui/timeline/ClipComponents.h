@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include "../common/LookAndFeel.h"
+
 #include "../../controllers/EditState.h"
 
 using namespace std::literals;
@@ -83,7 +85,9 @@ public:
     /** A warning chip: its width, then the chip in area. */
     static int getWarningWidth(const String& warning);
     static void paintWarning(Graphics& g, Rectangle<int> area, const String& warning);
-    static constexpr int pad = 3;
+    /** Text and chips from the header's edges: the inset across; down, what the 18 px header leaves around
+        12 px chips. Items in the row stand a tight gap apart. */
+    static constexpr int padX = Space::inset, padY = 3, gap = Space::tight;
 
 protected:
     /** Incompatibilities, drawn as warning chips after the name. */

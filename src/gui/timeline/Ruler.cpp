@@ -60,7 +60,7 @@ void RulerComponent::paint(Graphics& g) {
         g.fillPath(ends);
     }
 
-    g.setFont(Fonts::ui(Fonts::small));
+    g.setFont(Fonts::ui(Fonts::caption));
 
     // The finest ticks fill the loop strip, the next reach halfway up the rest, the coarsest the full height
     for (const auto& tick : ticks) {

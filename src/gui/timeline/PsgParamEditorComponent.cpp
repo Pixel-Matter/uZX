@@ -272,7 +272,7 @@ void PsgParamEditorComponent::paint(Graphics& g) {
 
     if (highlighted) {
         const String text(std::string(currentParam.getLabel()));
-        g.setFont(Fonts::ui(Fonts::small));
+        g.setFont(Fonts::ui(Fonts::caption));
         const auto tw = GlyphArrangement::getStringWidthInt(g.getCurrentFont(), text);
         g.setColour(Colors::Theme::light);
         g.fillRect(8, 0, tw + 8, 16);

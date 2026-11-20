@@ -41,7 +41,7 @@ public:
         {
             expectEquals(Fonts::fit(59.0f), Fonts::title);
             expectEquals(Fonts::fit(13.3f), Fonts::body);
-            expectEquals(Fonts::fit(10.7f), Fonts::small);
+            expectEquals(Fonts::fit(10.7f), Fonts::caption);
             expectEquals(Fonts::fit(8.0f), 8.0f);
             TextButton button;
             expectEquals(lf.getTextButtonFont(button, 64).getHeightInPoints(), Fonts::body, "a tall button in a row of controls");

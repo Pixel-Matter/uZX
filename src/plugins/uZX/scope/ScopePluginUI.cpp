@@ -274,7 +274,7 @@ void WaveformDisplay::paint(juce::Graphics& g) {
 
     // Channel label
     g.setColour(colour_.withAlpha(0.7f));
-    g.setFont(Fonts::ui(Fonts::small));
+    g.setFont(Fonts::ui(Fonts::caption));
     g.drawText(label_, bounds.reduced(4.0f), juce::Justification::topLeft);
 }
 

@@ -15,7 +15,7 @@ NotesToPsgPluginUI::TuningGroup::TuningGroup(NotesToPsgPluginUI& ui)
 {
     label.setText("Tuning preset:", dontSendNotification);
     label.setJustificationType(Justification::centredLeft);
-    label.setFont(Fonts::ui(Fonts::small));
+    label.setFont(Fonts::ui(Fonts::caption));
     label.setColour(Label::textColourId, Colors::Theme::textSecondary);
 
     ui.addAndMakeVisible(label);
@@ -35,17 +35,17 @@ NotesToPsgPluginUI::InfoGroup::InfoGroup(NotesToPsgPluginUI& ui)
 {
     plugin.staticParams.tuningTable.addListener(this);
 
-    tuningType.setFont(Fonts::ui(Fonts::small));
+    tuningType.setFont(Fonts::ui(Fonts::caption));
     tuningType.setColour(Label::textColourId, Colors::Theme::textSecondary);
 
     chipClockLabel.setText("Chip clock:", dontSendNotification);
     chipClockLabel.setJustificationType(Justification::centredLeft);
-    chipClockLabel.setFont(Fonts::ui(Fonts::small));
+    chipClockLabel.setFont(Fonts::ui(Fonts::caption));
     chipClockLabel.setColour(Label::textColourId, Colors::Theme::textSecondary);
 
     a4FrequencyLabel.setText("A4 frequency:", dontSendNotification);
     a4FrequencyLabel.setJustificationType(Justification::centredLeft);
-    a4FrequencyLabel.setFont(Fonts::ui(Fonts::small));
+    a4FrequencyLabel.setFont(Fonts::ui(Fonts::caption));
     a4FrequencyLabel.setColour(Label::textColourId, Colors::Theme::textSecondary);
 
     ui.addAndMakeVisible(tuningType);

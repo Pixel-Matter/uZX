@@ -98,7 +98,7 @@ void TitleBar::paint(Graphics& g) {
     if (plugin_) {
         g.setColour(Colors::Theme::textPrimary);
         auto font = g.getCurrentFont();
-        g.setFont(font.withPointHeight(Fonts::small).withExtraKerningFactor(0.03f).withStyle(Font::bold));
+        g.setFont(font.withPointHeight(Fonts::caption).withExtraKerningFactor(0.03f).withStyle(Font::bold));
 
         if (isCollapsed_) {
             const int controlBottom = menuButton_.isVisible()

@@ -53,6 +53,23 @@ public:
             expectEquals(lf.getPopupMenuFont().getHeightInPoints(), Fonts::menu, "menus");
         }
 
+        beginTest("Selected text reads on its selection, with and without the keyboard focus");
+        {
+            const auto luminance = [](Colour c) {
+                const auto lin = [](float v) { return v <= 0.04045f ? v / 12.92f : std::pow((v + 0.055f) / 1.055f, 2.4f); };
+                return 0.2126f * lin(c.getFloatRed()) + 0.7152f * lin(c.getFloatGreen()) + 0.0722f * lin(c.getFloatBlue());
+            };
+            const auto contrast = [&](Colour a, Colour b) {
+                const auto la = luminance(a), lb = luminance(b);
+                return (jmax(la, lb) + 0.05f) / (jmin(la, lb) + 0.05f);
+            };
+            const auto text = lf.findColour(TextEditor::highlightedTextColourId);
+            const auto selection = lf.findColour(TextEditor::highlightColourId);
+            for (const float alpha : {1.0f, 0.5f})  // JUCE's own dimming of an unfocused editor's selection
+                expect(contrast(text, Colors::Theme::background.overlaidWith(selection.withMultipliedAlpha(alpha))) >= 4.5f,
+                       "at alpha " + String(alpha));
+        }
+
         beginTest("BinaryData contains font resources");
         {
             expect(BinaryData::InterRegular_ttfSize > 0, "Inter Regular font data should be non-empty");

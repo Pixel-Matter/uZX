@@ -117,6 +117,9 @@ struct Theme {
     inline static const Colour muted         = error;
     // A yellow at accent lightness reads as olive, so highlights stay light
     inline static const Colour highlight     = Oklch::toColour({0.85f, 0.168f, 100.0f});
+    // Behind selected text, under textPrimary: the primary's hue, dark as macOS's selection in dark mode.
+    // JUCE halves it in an editor without the keyboard focus, which only darkens it under the light text
+    inline static const Colour selection     = Oklch::toColour({0.45f, 0.12f, 240.4f});
 };
 
 // Level meter zones

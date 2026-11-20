@@ -1,4 +1,5 @@
 #include "RenderVideoDialog.h"
+#include "../common/LookAndFeel.h"
 
 #include "../../controllers/EditState.h"
 #include "../../formats/video/VideoExport.h"
@@ -111,6 +112,8 @@ public:
         zoomBox.onChange = [this] { settings.zoom = (Video::Settings::Zoom) (zoomBox.getSelectedId() - 1); };
         for (auto* button : {&chooseButton, &cancelButton, &renderButton})
             addAndMakeVisible(button);
+        for (auto* button : {&cancelButton, &renderButton})
+            MoLookAndFeel::setLargeText(*button);
         addAndMakeVisible(normalizeButton);
         normalizeButton.setToggleState(settings.normalize, juce::dontSendNotification);
         normalizeButton.setTooltip("Scales the sound so its loudest peak is 1 dB below full scale: "

@@ -235,6 +235,7 @@ AboutDialogComponent::AboutDialogComponent()
     addAndMakeVisible(copyrightLabel_);
 
     closeButton_.setButtonText("Cool");
+    MoLookAndFeel::setLargeText(closeButton_);
     closeButton_.onClick = [this] {
         if (auto* window = findParentComponentOfClass<DialogWindow>())
             window->exitModalState(0);

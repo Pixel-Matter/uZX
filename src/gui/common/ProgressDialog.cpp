@@ -1,4 +1,5 @@
 #include "ProgressDialog.h"
+#include "LookAndFeel.h"
 
 using namespace juce;
 namespace te = tracktion;
@@ -14,6 +15,7 @@ ProgressDialog::ProgressDialog(const String& title,
     , job(j)
     , jobManager(jm) {
     content.cancelButton.setButtonText("Cancel");
+    MoLookAndFeel::setLargeText(content.cancelButton);
     if (job.canCancel()) {
         content.cancelButton.setEnabled(true);
         content.cancelButton.onClick = [this] {

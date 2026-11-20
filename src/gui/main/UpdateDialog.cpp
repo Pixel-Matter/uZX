@@ -14,7 +14,7 @@ UpdateDialogComponent::UpdateDialogComponent(const String& appName,
     setOpaque(true);
 
     message_.setText("Checking for updates...", dontSendNotification);
-    message_.setFont(FontOptions(14.0f, Font::plain));
+    message_.setFont(Fonts::ui(Fonts::body));
     message_.setJustificationType(Justification::centred);
     message_.setMinimumHorizontalScale(1.0f);  // a long line wraps rather than narrows
     message_.setColour(Label::textColourId, Colors::Theme::textPrimary);

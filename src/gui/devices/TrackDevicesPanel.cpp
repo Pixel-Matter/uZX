@@ -208,7 +208,7 @@ void TrackDevicesPanel::paint(juce::Graphics& g) {
 
     if (!currentTrack.get()) {
         g.setColour(Colors::Theme::textSecondary);
-        g.setFont(16.0f);
+        g.setFont(Fonts::ui(Fonts::body));
         g.drawText("Select a track to view its devices", getLocalBounds(), juce::Justification::centred, true);
     }
 }

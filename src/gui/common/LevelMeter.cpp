@@ -157,7 +157,7 @@ void CpuLoadMeter::timerCallback() {
 
 void CpuLoadMeter::paint(Graphics& g) {
     static constexpr int ledSize = 2, gap = 1, ledHeight = 7, captionWidth = 28;
-    g.setFont(FontOptions(12.0f));
+    g.setFont(Fonts::ui(Fonts::small));
     auto b = getLocalBounds();
     const auto row = [&](juce::Rectangle<int> r, const char* caption, float load) {
         g.setColour(Colors::Theme::textSecondary);

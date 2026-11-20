@@ -65,8 +65,8 @@ private:
         Desktop::getInstance().getAnimator().fadeOut(this, 400);
     }
 
-    static Font nameFont() { return Font(FontOptions(15.0f)); }
-    static Font smallFont() { return Font(FontOptions(12.0f)); }
+    static Font nameFont() { return Fonts::ui(Fonts::body); }
+    static Font smallFont() { return Fonts::ui(Fonts::small); }
     static int namesWidth(const StringArray& names) {
         int width = gap * (names.size() - 1);
         for (auto& name : names)

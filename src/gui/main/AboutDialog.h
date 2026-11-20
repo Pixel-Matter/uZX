@@ -26,7 +26,7 @@ private:
     void invalidateLayout();
 
     juce::String text_;
-    juce::Font font_ { juce::FontOptions(14.0f, juce::Font::plain) };
+    juce::Font font_ { Fonts::ui(Fonts::body) };
     juce::Colour colour_ { Colors::Theme::textPrimary };
     juce::Justification justification_ { juce::Justification::centred };
     float lineSpacingFactor_ { 1.0f };
@@ -47,7 +47,7 @@ private:
     void advance(double timestampSec);
 
     const juce::String text_;
-    const juce::Font font_ { juce::FontOptions(14.0f, juce::Font::plain) };
+    const juce::Font font_ { Fonts::ui(Fonts::body) };
     static constexpr float fadeWidth = 32.0f;
     double startSec_ = -1.0, offset_ = -fadeWidth;  // the text rests clear of the left fade
     juce::VBlankAttachment vblank_ { this, [this](double t) { advance(t); } };  // last: detaches before the rest goes

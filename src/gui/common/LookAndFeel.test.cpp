@@ -37,6 +37,18 @@ public:
             knob.setLookAndFeel(nullptr);
         }
 
+        beginTest("Text sized by its control snaps down to the type scale");
+        {
+            expectEquals(Fonts::fit(59.0f), Fonts::title);
+            expectEquals(Fonts::fit(13.3f), Fonts::body);
+            expectEquals(Fonts::fit(10.7f), Fonts::small);
+            expectEquals(Fonts::fit(8.0f), 8.0f);
+            TextButton button;
+            expectEquals(lf.getTextButtonFont(button, 64).getHeightInPoints(), Fonts::title, "a tall channel button");
+            expectEquals(lf.getTextButtonFont(button, 20).getHeightInPoints(), Fonts::body, "AY");
+            expectEquals(lf.getPopupMenuFont().getHeightInPoints(), Fonts::menu, "menus");
+        }
+
         beginTest("BinaryData contains font resources");
         {
             expect(BinaryData::InterRegular_ttfSize > 0, "Inter Regular font data should be non-empty");

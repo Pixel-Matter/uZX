@@ -46,7 +46,7 @@ void GenericPluginUIAdapter::paint(juce::Graphics& g) {
     });
 
     g.setColour(Colors::Theme::textPrimary);
-    g.setFont(14.0f);
+    g.setFont(Fonts::ui(Fonts::body));
     g.drawFittedText(pluginInfo, getLocalBounds(), juce::Justification::centred, 10);
 }
 

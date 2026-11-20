@@ -116,7 +116,7 @@ Colour ClipHeader::getFill(Colour clipColour, bool selected) {
 }
 
 static Font getHeaderFont() {
-    return Font(FontOptions(11.0f));
+    return Fonts::ui(Fonts::small);
 }
 
 int ClipHeader::getWarningWidth(const String& warning) {
@@ -142,7 +142,7 @@ void ClipHeader::paint(Graphics& g) {
 
     auto row = getShownArea(*this).reduced(pad);
 
-    const Font nameFont(FontOptions(11.0f).withStyle("Bold"));
+    const Font nameFont(Fonts::ui(Fonts::small).withStyle("Bold"));
     const Font font = getHeaderFont();
     const auto name = clip->getName();
     const auto warnings = getWarnings();

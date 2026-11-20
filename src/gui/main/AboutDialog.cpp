@@ -176,7 +176,7 @@ AboutDialogComponent::AboutDialogComponent()
     companyLabel_.setText(String::fromUTF8(ProjectInfo::companyName), dontSendNotification);
     companyLabel_.setJustificationType(Justification::centred);
     companyLabel_.setColour(Label::textColourId, Colors::Theme::textPrimary);
-    companyLabel_.setFont(FontOptions(16.0f, Font::plain));
+    companyLabel_.setFont(Fonts::ui(Fonts::body));
     addAndMakeVisible(companyLabel_);
 
     titleLabel_.setText(JUCEApplication::getInstance()->getApplicationName(), dontSendNotification);
@@ -217,7 +217,7 @@ AboutDialogComponent::AboutDialogComponent()
     infoLines.add("Includes ayumi library by Peter Sovietov (true-grue)");
     infoLines.add("Opens tracker modules with zxtune by Vitamin/CAIG");
 
-    infoText_.setFont(Font(FontOptions(14.0f, Font::plain)));
+    infoText_.setFont(Fonts::ui(Fonts::body));
     infoText_.setColour(Colors::Theme::textPrimary);
     infoText_.setJustification(Justification::centred);
     infoText_.setLineSpacing(1.5f);

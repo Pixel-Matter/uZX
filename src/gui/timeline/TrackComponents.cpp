@@ -26,7 +26,7 @@ TrackHeaderComponent::TrackHeaderComponent(EditViewState& evs, te::Track::Ptr t)
     soloButton.setColour(TextButton::buttonOnColourId, Colors::Theme::soloed);
 
     // TODO move to L&f for Label font
-    trackName.setFont(trackName.getFont().withPointHeight(12.0f).withExtraKerningFactor(0.03f));
+    trackName.setFont(trackName.getFont().withPointHeight(Fonts::body).withExtraKerningFactor(0.03f));
 
     trackName.setText(t->getName(), dontSendNotification);
     trackName.setEditable(false, true, true);

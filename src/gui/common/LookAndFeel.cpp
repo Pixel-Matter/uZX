@@ -234,11 +234,11 @@ Font MoLookAndFeel::getSmallFont(float pointHeigth) {
 }
 
 Font MoLookAndFeel::getComboBoxFont(ComboBox& box) {
-    return withDefaultMetrics(FontOptions{jmin(16.0f, (float) box.getHeight() * 0.85f)});
+    return withDefaultMetrics(Fonts::ui(Fonts::fit(jmin(Fonts::body, (float) box.getHeight() * 0.7f))));
 }
 
 Font MoLookAndFeel::getPopupMenuFont() {
-    return withDefaultMetrics(FontOptions(17.0f));
+    return withDefaultMetrics(Fonts::ui(Fonts::menu));
 }
 
 float MoLookAndFeel::getPopupMenuItemFontProportion() {
@@ -359,7 +359,7 @@ void MoLookAndFeel::getIdealPopupMenuItemSize(const String& text, const bool isS
 Font MoLookAndFeel::getTextButtonFont(TextButton&, int buttonHeight) {
     const int capHeight = buttonHeight - 10;
     const float pointHeight = (float) capHeight / 0.75f; // approx cap height to point size
-    return getSmallFont(pointHeight);
+    return getSmallFont(Fonts::fit(pointHeight));
 }
 
 void MoLookAndFeel::drawButtonText(Graphics& g,
@@ -558,12 +558,11 @@ int MoLookAndFeel::getSliderThumbRadius(Slider& slider) {
 
 TextLayout MoLookAndFeel::layoutTooltipText(TypefaceMetricsKind metrics, const String& text, Colour colour) noexcept {
     const int maxToolTipWidth = 600;
-    const float tooltipFontSize = 14.0f;
 
     AttributedString s;
     s.setJustification(Justification::left);
-    s.setLineSpacing(tooltipFontSize * 0.2f); // 1.2 line spacing
-    s.append(text, FontOptions(tooltipFontSize).withMetricsKind(metrics), colour);
+    s.setLineSpacing(Fonts::body * 0.2f); // 1.2 line spacing
+    s.append(text, Fonts::ui(Fonts::body).withMetricsKind(metrics), colour);
 
     TextLayout tl;
     tl.createLayoutWithBalancedLineLengths(s, (float)maxToolTipWidth);
@@ -609,7 +608,7 @@ int MoLookAndFeel::getTabButtonBestWidth(TabBarButton& button, int tabDepth) {
 }
 
 Font MoLookAndFeel::getTabButtonFont(TabBarButton&, float) {
-    return withDefaultMetrics(FontOptions(13.0f));  // as the rows of the lists the tabs hold
+    return withDefaultMetrics(Fonts::ui(Fonts::small));
 }
 
 void MoLookAndFeel::drawTabButton(TabBarButton& button, Graphics& g, bool isMouseOver, bool isMouseDown) {
@@ -650,7 +649,7 @@ void MoLookAndFeel::drawGroupComponentOutline(Graphics& g, int width, int height
                                               const String& text, const Justification& position,
                                               GroupComponent& group) {
     const float textH = 11.0f;
-    const float fontPtSize = textH;
+    const float fontPtSize = Fonts::small;
     const float indent = 3.0f;
     const float textEdgeGap = 4.0f;
     auto cs = 5.0f;
@@ -725,7 +724,7 @@ void MoLookAndFeel::drawTimelineGrid(Graphics& g, const Rectangle<int>& bounds,
 ReadoutLookAndFeel::ReadoutLookAndFeel() = default;
 
 Font ReadoutLookAndFeel::getNumericReadoutFont() const {
-    return FontOptions("Iosevka Aile", "Semibold", 20.0f).withKerningFactor(-0.05f);
+    return FontOptions().withName("Iosevka Aile").withStyle("Semibold").withPointHeight(Fonts::readout).withKerningFactor(-0.05f);
 }
 
 Font ReadoutLookAndFeel::getSliderPopupFont(Slider& /*slider*/) {

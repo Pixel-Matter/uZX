@@ -39,9 +39,10 @@ offsets. After its last step a sequence goes on from its loop step or stops the 
 zxtune's player of the format does each frame, and say where a format does not fit.
 
 The usage rows count what the patterns sound, played in the order of the positions: per sample,
-ornament, envelope shape and period, noise base and note, the times the note was struck, and the
-rows and frames it sounded for. The noise base is what the pattern adds to the sample's noise
-period. The module's note table comes with it, as the tone period of each note, so the envelope
+ornament, envelope shape and period, noise base, channel volume and note, the times the note was
+struck, and the rows and frames it sounded for. The noise base is what the pattern adds to the
+sample's noise period; the volume is the pattern's for the channel, 15 at full, whatever scale the
+tracker has for it. The module's note table comes with it, as the tone period of each note, so the envelope
 period can be read against the note's. A usage row whose ornament slot has no definition plays no ornament: SQ-Tracker's
 slot 0, Pro Sound Maker's 32.
 
@@ -64,9 +65,8 @@ Tone offsets are stored modulo 4096, the size of the chip's tone period.
 
 ## What the dump leaves out
 
-- What a pattern does to a note besides choosing its sample, ornament and envelope shape: the
-  channel volume, slides and vibrato, sample and ornament offsets. Pro Sound Maker's envelope set
-  by a note has no period in the usage.
+- What a pattern does to a note besides what the usage rows carry: slides and vibrato, sample
+  and ornament offsets. Pro Sound Maker's envelope set by a note has no period in the usage.
 - ProTracker 1 and Sound Tracker read the ornament at the sample's position, so the two differ
   from the dump once a sample has looped.
 - SQ-Tracker loops an ornament that has no loop over the range of the sample it plays with; an

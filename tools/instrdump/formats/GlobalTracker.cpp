@@ -4,6 +4,8 @@
 #include "../Tracks.h"
 #include "module/players/aym/freq_tables.h"
 
+#include <algorithm>
+
 namespace MoTool::InstrDump {
 
 namespace {
@@ -84,7 +86,8 @@ public:
         tracks_.envelopePeriod(period);
     }
     void SetNoEnvelope() override { tracks_.envelope(-1); }
-    void SetVolume(uint_t) override {}
+    // the pattern's volume is what the player takes off every level
+    void SetVolume(uint_t attenuation) override { tracks_.volume(15 - std::min<uint_t>(attenuation, 15)); }
 
     void finish() {
         tracks_.play(order_, 0, 0, module_.usage);

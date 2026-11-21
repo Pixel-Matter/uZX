@@ -55,13 +55,14 @@ using Ornament = Sequence<OrnamentStep>;
 
 //==============================================================================
 /** How a module's patterns sound a sample: the rows it plays with one ornament, envelope shape
-    and period, noise base and note. */
+    and period, noise base, channel volume and note. */
 struct UsageKey {
     unsigned sample = 0;
     unsigned ornament = 0;
     int envelope = -1;       // the envelope shape (AY register 13), -1 when the envelope is off
     unsigned envelopePeriod = 0;  // the envelope period the pattern set, 0 when the envelope is off
     int noise = 0;           // what the pattern adds to the sample's noise period: its noise base
+    unsigned volume = 15;    // the channel volume the pattern plays it at, 15 is full
     unsigned note = 0;       // the note's number in the tracker's table, 0 is its lowest
 
     auto operator<=>(const UsageKey&) const = default;

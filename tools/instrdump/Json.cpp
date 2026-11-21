@@ -74,8 +74,8 @@ void writeUsage(std::ostream& out, const Usage& usage) {
     for (const auto& [key, count] : usage) {
         out << (first ? "\n  " : ",\n  ") << "{\"sample\":" << key.sample << ",\"ornament\":" << key.ornament
             << ",\"envelope\":" << key.envelope << ",\"envelopePeriod\":" << key.envelopePeriod
-            << ",\"noise\":" << key.noise << ",\"note\":" << key.note << ",\"notes\":" << count.notes
-            << ",\"rows\":" << count.rows << ",\"frames\":" << count.frames << '}';
+            << ",\"noise\":" << key.noise << ",\"volume\":" << key.volume << ",\"note\":" << key.note
+            << ",\"notes\":" << count.notes << ",\"rows\":" << count.rows << ",\"frames\":" << count.frames << '}';
         first = false;
     }
     out << ']';

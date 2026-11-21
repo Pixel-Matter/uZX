@@ -75,7 +75,7 @@ public:
     void SetNote(uint_t note) override { tracks_.note(note); }
     void SetSample(uint_t sample) override { tracks_.sample(sample); }
     void SetOrnament(uint_t ornament) override { tracks_.ornament(ornament); }
-    void SetVolume(uint_t) override {}
+    void SetVolume(uint_t volume) override { tracks_.volume(volume); }
     void SetGlissade(int_t) override {}
     void SetNoteGliss(int_t, uint_t) override {}
     void SetNoGliss() override {}

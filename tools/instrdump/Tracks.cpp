@@ -55,6 +55,10 @@ void Tracks::noise(int base) {
     add(Kind::Noise, base);
 }
 
+void Tracks::volume(unsigned level) {
+    add(Kind::Volume, static_cast<int>(level));
+}
+
 void Tracks::Finish(uint_t size) {
     if (pattern_) {
         pattern_->size = size;
@@ -145,6 +149,9 @@ void Tracks::play(const std::vector<Position>& order, unsigned defaultSample, un
                         break;
                     case Kind::Noise:
                         channel.key.noise = event->value;
+                        break;
+                    case Kind::Volume:
+                        channel.key.volume = static_cast<unsigned>(event->value);
                         break;
                     case Kind::EnvelopePeriod:
                     case Kind::Tempo:

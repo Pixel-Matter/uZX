@@ -86,7 +86,7 @@ public:
     void SetNote(uint_t note) override { tracks_.note(note); }
     void SetSample(uint_t sample) override { tracks_.sample(sample); }
     void SetOrnament(uint_t ornament) override { tracks_.ornament(ornament); }
-    void SetVolume(uint_t) override {}
+    void SetVolume(uint_t volume) override { tracks_.volume(volume); }
     void SetEnvelope(uint_t type, uint_t period) override {
         tracks_.envelope(static_cast<int>(type));
         tracks_.envelopePeriod(period);

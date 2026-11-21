@@ -1,4 +1,4 @@
-# A Strudel live editor for AY/YM
+# Krendel live editor for AY/YM
 
 **Status: playable browser prototype.** The editor runs one AY/YM chip in an AudioWorklet and shares voice allocation and PSG rendering with native uZX. [Build and run the prototype](../../web/strudel/README.md)
 

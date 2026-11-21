@@ -1,16 +1,38 @@
 import * as strudel from '@strudel/core'
 import * as mini from '@strudel/mini'
+import * as tonal from '@strudel/tonal'
 import { transpiler } from '@strudel/transpiler'
 import { initEditor, updateMiniLocations, highlightMiniLocations } from '@strudel/codemirror'
 import { ChipAudio } from './audio.js'
+import { controls } from './controls.js'
 import { noteSound } from './sound.js'
 import { ScoreView } from './score-view.js'
 import './style.css'
 
-const example = `// The chord asks for three channels while the bass is held.
+const example = `// An instrument is a function that sets controls. Times inside a note are in seconds.
+setcpm(30)
+const A = 0, B = .5, C = 1 // pan picks the chip channel
+
+const triBass = p => p.aytone(0).ayenv(1).aybuzz(1).ayshape("tri") // the envelope alone, at the note's pitch
+const envPitch = p => p.aytone(0).aybuzz(1).ayshape("tri")         // sets the envelope's pitch, takes no channel
+const pad = p => p.decay(.5).sustain(.3).orn("0:2:4").ornstep(1/32) // a triad in scale steps from the root
+const lead = p => p.aynoise(1).noisehold(.04).decay(.12).sustain(.6)
+  .penv(12).pdecay(.06).vib(6).vibmod(.3).vibdelay(.15)
+const bendLead = p => lead(p).penv(-5).pdecay(.25)
+
+const bass2 = note("g1 ~ g1 g1 a1 ~ a1 f#1")
+
 stack(
-  note("<c2 g1 eb2 bb1>").s("bass").gain(0.65),
-  note("~ [c4,e4,g4] ~ [d4,f4,a4]").s("pluck").gain(0.75)
+  cat(
+    triBass(note("b1 ~ b1 b1 ~ b1 d2 e2")),
+    // a square tone through the envelope, which sounds a fifth below it
+    stack(envPitch(bass2), bass2.transpose(7).ayenv(1))
+  ).pan(B),
+  pad(n("<[0 5 3 4] [0@3 3 4@2 6@2]>").scale("B3:minor")).pan(A),
+  cat(
+    lead(n("4 ~ 7 6 4 ~ 2 ~")),
+    bendLead(n("4 6 ~ 7@2 9 ~ 8"))
+  ).scale("B4:minor").pan(C)
 )`
 
 const ui = Object.fromEntries(
@@ -19,7 +41,7 @@ const ui = Object.fromEntries(
 )
 const engine = new ChipAudio()
 const view = new ScoreView(ui.score, ui.ownership, ui.owners)
-const scope = strudel.evalScope(strudel, mini)
+const scope = strudel.evalScope(strudel, mini, tonal, controls)
 const evaluator = strudel.repl({ transpiler, getTime: () => engine.currentFrame / engine.sampleRate })
 const toFrame = seconds => Math.round(seconds * engine.sampleRate)
 

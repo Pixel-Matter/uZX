@@ -11,7 +11,7 @@ if(EMSCRIPTEN)
         -sSTANDALONE_WASM=1
         -sFILESYSTEM=0
         -sALLOW_MEMORY_GROWTH=0
-        "-sEXPORTED_FUNCTIONS=['_uzx_init','_uzx_reset','_uzx_note_on','_uzx_note_off','_uzx_render','_uzx_audio_left','_uzx_audio_right','_uzx_trace_data','_uzx_trace_count','_uzx_trace_clear','_uzx_dropped_note_count']"
+        "-sEXPORTED_FUNCTIONS=['_uzx_init','_uzx_reset','_uzx_note_sound','_uzx_note_on','_uzx_note_off','_uzx_render','_uzx_audio_left','_uzx_audio_right','_uzx_trace_data','_uzx_trace_count','_uzx_trace_clear','_uzx_dropped_note_count']"
     )
     set_target_properties(uzx_worklet_wasm PROPERTIES
         OUTPUT_NAME engine

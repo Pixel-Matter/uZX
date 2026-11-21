@@ -106,9 +106,54 @@ def load(db):
         table = tables[max(use["tables"], key=use["tables"].get)]
         base = table[min(note, len(table) - 1)]
         frames = render(*samples[sid], base, noise, envelope)
+        length, loop, stops, lanes = samples[sid]
+        sample = {"len": length, "loop": loop, "end": "stop" if stops else "loop", "lanes": lanes}
         sounds.append({"id": sid, "noise": noise, "envelope": envelope, "share": use["notes"] / totals[sid],
-                       "base": base, "frames": frames, **use, **measure(frames, use)})
+                       "note": note, "base": base, "sample": sample, "frames": frames, **use, **measure(frames, use)})
     return sounds
+
+
+def vortex_sample(sample, noise_base=0):
+    """A sample as a Vortex Tracker II text sample, and what of it that format has no place for, as words:
+    "noise-base" (the pattern must set this noise base), "envelope-offset", "volume-slide", "length"."""
+    lanes, missing = sample["lanes"], set()
+
+    def lane(name, i):
+        return lanes[name][i] if name in lanes else 0
+
+    def signed(value, digits):
+        return f"{'-' if value < 0 else '+'}{abs(value):0{digits}X}"
+
+    # the noise base is the pattern's: it folds into the sample only where no step accumulates on it
+    fold = noise_base if not any(lanes.get("noiseAcc", [])) else 0
+    if noise_base and not fold:
+        missing.add("noise-base")
+    lines = []
+    for i in range(min(sample["len"], 64)):
+        if lane("noise", i):
+            # one field: the noise offset while the noise sounds, else the envelope's
+            offset = lane("noiseOfs", i) + (0 if lane("noiseAbs", i) else fold)
+            offset, keep = (offset if lane("noiseAcc", i) else offset & 31), lane("noiseAcc", i)
+            if lane("envOfs", i) or lane("envAcc", i):
+                missing.add("envelope-offset")
+        else:
+            offset, keep = lane("envOfs", i), lane("envAcc", i)
+        slide = lane("volSlide", i)
+        if abs(slide) > 1:
+            missing.add("volume-slide")
+        lines.append(f"{'T' if lane('tone', i) else 't'}{'N' if lane('noise', i) else 'n'}{'E' if lane('env', i) else 'e'} "
+                     f"{signed(lane('toneOfs', i), 3)}{'^' if lane('toneAcc', i) else '_'} "
+                     f"{signed(max(-255, min(255, offset)), 2)}{'^' if keep else '_'} "
+                     f"{max(0, min(15, lane('vol', i))):X}{'+' if slide > 0 else '-' if slide < 0 else '_'}")
+    if sample["len"] > 64:
+        missing.add("length")
+    if sample["end"] == "stop" or sample["len"] > 64:
+        lines.append("tne +000_ +00_ 0_")       # Vortex samples always loop: one that ends loops on silence
+        loop = len(lines) - 1
+    else:
+        loop = sample["loop"]
+    lines[loop] += " L"
+    return "[Sample]\n" + "\n".join(lines) + "\n", sorted(missing)
 
 
 def measure(frames, use):

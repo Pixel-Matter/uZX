@@ -9,7 +9,7 @@ in it, which may be several at once: "kick+snare". The first frames of each kind
 tone, noise and its period) are clustered with k-medoids. Prints each type and, by the year of
 the tunes, an old (to 2004) and a fresh (from 2015) example: the one most tunes of that time use,
 among the half of the type nearest its medoid. With an output folder, writes those examples as
-WAV files and drums.json, their frames.
+WAV files and drums.json: their frames, the sample itself, and the sample as Vortex Tracker II text.
 
 Needs numpy. The database comes from scripts/zxart_instruments_db.py.
 """
@@ -134,9 +134,11 @@ def cluster(db, kind, sounds, out):
             sound, tunes = found
             _, title, year, _, authors = tunes[0]
             shown = max(16, min(sounds_of.FRAMES, sound["length"]))
-            entry["examples"][era] = {"id": sound["id"], "noise": sound["noise"], "tunes": len(tunes), "title": title,
-                                      "year": year, "authors": authors, **describe(sound),
-                                      "rows": sound["frames"][:shown].astype(int).tolist()}
+            vortex, missing = sounds_of.vortex_sample(sound["sample"], sound["noise"])
+            entry["examples"][era] = {"id": sound["id"], "noise": sound["noise"], "note": sound["note"],
+                                      "tunes": len(tunes), "title": title, "year": year, "authors": authors,
+                                      **describe(sound), "rows": sound["frames"][:shown].astype(int).tolist(),
+                                      "sample": sound["sample"], "vortex": vortex, "vortex_missing": missing}
             print(f"    {era:5s} {sound['id']} noise {sound['noise']:2d}  in {len(tunes)} tunes, e.g. {authors} - {title} ({year})")
             print("          level " + " ".join(f"{int(v):2d}" for v in sound["frames"][:16, 0]))
             if out:

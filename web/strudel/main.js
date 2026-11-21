@@ -5,8 +5,8 @@ import { transpiler } from '@strudel/transpiler'
 import { initEditor, updateMiniLocations, highlightMiniLocations } from '@strudel/codemirror'
 import { ChipAudio } from './audio.js'
 import { controls } from './controls.js'
-import { noteSound } from './sound.js'
-import { ScoreView } from './score-view.js'
+import { noteSound, presetNames, withPreset } from './sound.js'
+import { ScoreView, showInstruments } from './score-view.js'
 import './style.css'
 
 const example = `// An instrument is a function that sets controls. Times inside a note are in seconds.
@@ -27,7 +27,8 @@ stack(
     triBass(note("b1 ~ b1 b1 ~ b1 d2 e2")),
     // a square tone through the envelope, which sounds a fifth below it
     stack(envPitch(bass2), bass2.transpose(7).ayenv(1))
-  ).pan(B),
+  ).pan(B).ayprio(1), // the lowest priority: a drum takes this channel while it sounds
+  s("kick ~ snare ~ kick kick snare ~").pan(B),
   pad(n("<[0 5 3 4] [0@3 3 4@2 6@2]>").scale("B3:minor")).pan(A),
   cat(
     lead(n("4 ~ 7 6 4 ~ 2 ~")),
@@ -36,11 +37,12 @@ stack(
 )`
 
 const ui = Object.fromEntries(
-    ['editor', 'play', 'update', 'stop', 'chip', 'status', 'error', 'score', 'owners', 'ownership']
+    ['editor', 'play', 'update', 'stop', 'chip', 'status', 'error', 'legend', 'score', 'owners', 'ownership']
         .map(id => [id, document.getElementById(id)]),
 )
 const engine = new ChipAudio()
 const view = new ScoreView(ui.score, ui.ownership, ui.owners)
+showInstruments(ui.legend, presetNames)
 const scope = strudel.evalScope(strudel, mini, tonal, controls)
 const evaluator = strudel.repl({ transpiler, getTime: () => engine.currentFrame / engine.sampleRate })
 const toFrame = seconds => Math.round(seconds * engine.sampleRate)
@@ -139,7 +141,15 @@ let commands = []
 let batchPending = false
 
 function scheduleNote(hap, _relativeTime, durationSeconds, cps, targetSeconds) {
-    const { note, freq, gain = 0.8, velocity = 1 } = hap.value ?? {}
+    let instrument
+    let controls
+    try {
+        ({ instrument, controls } = withPreset(hap.value ?? {}))
+    } catch (error) {
+        showError(error)
+        return
+    }
+    const { note, freq, gain = 0.8, velocity = 1 } = controls
     if (note === undefined && freq === undefined) return
     const pitch = note === undefined
         ? strudel.freqToMidi(Number(freq))
@@ -147,10 +157,9 @@ function scheduleNote(hap, _relativeTime, durationSeconds, cps, targetSeconds) {
     const level = Math.max(0, Math.min(1, Number(velocity) * Number(gain)))
     if (!(durationSeconds > 0) || !Number.isFinite(durationSeconds)
         || !Number.isFinite(pitch) || pitch < 0 || pitch > 127 || !(level > 0)) return
-    let instrument
     let sound
     try {
-        ({ instrument, sound } = noteSound(hap.value, { pitch, cps, scale: hap.context.scale }))
+        sound = noteSound(controls, { pitch, cps, scale: hap.context.scale })
     } catch (error) {
         showError(error)
         return

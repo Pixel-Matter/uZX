@@ -2,6 +2,10 @@ const QUEUE_CAPACITY = 4096;
 const TRACE_WORDS = 74;
 const TRACE_BATCH_CAPACITY = 256;
 const TRACE_IN_FLIGHT_CAPACITY = 2;
+const ENGINE_FUNCTIONS = [
+    "uzx_init", "uzx_reset", "uzx_note_sound", "uzx_note_on", "uzx_note_off", "uzx_render",
+    "uzx_audio_left", "uzx_audio_right", "uzx_trace_data", "uzx_trace_count", "uzx_trace_clear",
+];
 
 class UZXChipProcessor extends AudioWorkletProcessor {
     constructor(options) {
@@ -42,6 +46,10 @@ class UZXChipProcessor extends AudioWorkletProcessor {
             this.memory = this.engine.memory;
             if (!this.memory)
                 throw new Error("The WASM module does not export linear memory");
+            // public/engine.wasm is built separately, so it can be older than this file.
+            const missing = ENGINE_FUNCTIONS.filter(name => typeof this.engine[name] !== "function");
+            if (missing.length > 0)
+                throw new Error(`engine.wasm is out of date: it has no ${missing.join(", ")}. Rebuild the WASM engine.`);
             this.heapFloat = new Float32Array(this.memory.buffer);
             this.heapUint = new Uint32Array(this.memory.buffer);
             this.initializeEngine();

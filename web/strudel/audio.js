@@ -65,6 +65,7 @@ export class ChipAudio {
                     processorOptions: {wasmModule, isYm},
                 });
                 this.node.port.onmessage = event => this.handleMessage(event.data);
+                this.node.onprocessorerror = () => this.onError?.(new Error("The audio engine stopped after an error."));
                 this.node.connect(this.context.destination);
                 this.isYm = isYm;
                 this.ready = new Promise((resolve, reject) => {

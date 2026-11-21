@@ -11,6 +11,7 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 
 - Play and live-edit bass and pluck patterns on one AY/YM chip, with a scrolling piano roll and channel, noise and envelope ownership.
 - Controls shape a note: tone, noise and the chip's envelope, level and pitch envelopes, vibrato, the channel, and an ornament in scale steps. `.scale()` and Strudel's other tonal functions work.
+- Kick and snare drums: `s("kick ~ snare ~")`.
 
 ### Download
 - Linux: the download is a folder with the app as `uzx-player` or `uzx-studio`, its menu entry and icon, and `install.sh`, which adds it to the applications menu, where it was a single binary named `μZX Player`

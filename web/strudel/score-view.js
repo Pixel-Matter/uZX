@@ -2,7 +2,7 @@ const labelWidth = 55
 const pastRatio = 0.72
 const historySeconds = 2.25
 const futureSeconds = historySeconds / pastRatio - historySeconds
-const colors = ['#92cff0', '#f0bc78']
+const colors = ['#92cff0', '#f0bc78', '#f08f9a', '#c3a8f5']  // by instrument tag
 const ownerLanes = [
     ['A', 'a'], ['B', 'b'], ['C', 'c'], ['Noise', 'noise'], ['Envelope', 'envelope'],
 ]
@@ -27,6 +27,17 @@ function surface(canvas) {
     ctx.font = '11px ui-monospace, monospace'
     ctx.textBaseline = 'middle'
     return { ctx, width, height }
+}
+
+/** Puts the instruments before the legend's other entries, each with the color of its notes. */
+export function showInstruments(legend, names) {
+    legend.prepend(...names.map((name, tag) => {
+        const entry = document.createElement('span')
+        const swatch = document.createElement('i')
+        swatch.style.background = colors[tag]
+        entry.append(swatch, name[0].toUpperCase() + name.slice(1))
+        return entry
+    }))
 }
 
 export class ScoreView {

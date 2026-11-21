@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
 
-import {noteSound} from "../sound.js";
+import {noteSound, withPreset} from "../sound.js";
 
 const wasmPath = fileURLToPath(new URL("../public/engine.wasm", import.meta.url));
 const wasmModule = await WebAssembly.compile(await readFile(wasmPath));
@@ -162,6 +162,18 @@ test("production worklet switches generations, preserves same-frame order, stops
     assert.ok(processRange(processor, 3200, 3712), "reset can resume with a new pluck generation");
 });
 
+test("a WASM module older than the worklet is reported, not played", () => {
+    // A module that exports its memory and nothing else.
+    const stale = new WebAssembly.Module(new Uint8Array([
+        0, 97, 115, 109, 1, 0, 0, 0, 5, 3, 1, 0, 1, 7, 10, 1, 6, 109, 101, 109, 111, 114, 121, 2, 0,
+    ]));
+    const processor = new WorkletProcessor({processorOptions: {wasmModule: stale, isYm: false}});
+    const error = processor.port.messages.find(message => message.type === "error");
+    assert.match(error.message, /engine\.wasm is out of date: it has no uzx_init, .*uzx_note_sound/);
+    assert.ok(!processor.port.messages.some(message => message.type === "ready"));
+    assert.equal(processor.process([], [[new Float32Array(128), new Float32Array(128)]]), true);
+});
+
 test("a stalled display drops trace batches while audio continues", () => {
     const processor = makeProcessor(false);
     commands(processor, [{
@@ -182,7 +194,7 @@ test("a stalled display drops trace batches while audio continues", () => {
 
 test("a gate's sound reaches the engine, and the next gate without one is a plain tone", () => {
     const processor = makeProcessor();
-    const {sound} = noteSound({aynoise: 1, pan: 1}, {pitch: 60, cps: 0.5});
+    const sound = noteSound({aynoise: 1, pan: 1}, {pitch: 60, cps: 0.5});
     commands(processor, [
         {frame: 0, generation: 1, gate: true, occurrence: 7, instrument: 0, pitch: 60, velocity: 0.8, sound},
         {frame: 0, generation: 1, gate: true, occurrence: 8, instrument: 0, pitch: 64, velocity: 0.8},
@@ -194,4 +206,27 @@ test("a gate's sound reaches the engine, and the next gate without one is a plai
     const message = traceMessages(processor, 1)[0];
     const [a, b, c, noise] = new Uint32Array(message.records).slice(3, 7);
     assert.deepEqual([a, b, c, noise], [8, 0, 7, 7], "the noisy note takes the right channel and the noise");
+});
+
+test("a kick takes the channel it asks for from the lowest priority and gives it back", () => {
+    const processor = makeProcessor();
+    const gate = (occurrence, value, pitch) => {
+        const {instrument, controls} = withPreset(value);
+        const sound = noteSound(controls, {pitch, cps: 0.5});
+        return {frame: 0, generation: 1, gate: true, occurrence, instrument, pitch, velocity: 0.8, sound};
+    };
+    commands(processor, [
+        gate(1, {pan: 0.5, ayprio: 1}, 35),
+        gate(2, {pan: 0}, 59),
+        gate(3, {pan: 1}, 66),
+        gate(4, {s: "kick", pan: 0.5}, 40),
+    ]);
+    processRange(processor, 0, 9600);
+    globalThis.currentFrame = 9600;
+    send(processor, {type: "stop"});
+
+    const records = traceRecords(traceMessages(processor, 1));
+    assert.deepEqual(records.map(record => record.channels[1]), [4, 4, 4, 4, 4, 4, 1, 1, 1, 1],
+        "the kick holds channel B for its six frames, then the bass has it again");
+    assert.ok(records.every(record => record.channels[0] === 2 && record.channels[2] === 3));
 });

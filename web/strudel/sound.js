@@ -12,8 +12,12 @@ export const shapes = ['tri', 'trifall', 'saw', 'sawfall', 'attack', 'decay', 'a
 const presets = {
     bass: { ayprio: 2 },
     pluck: { ayprio: 1, aynoise: 1, noisehold: 0.04, aynoiseperiod: 5, decay: 0.14 },
+    // A drum has a pitch of its own, so `s("kick snare")` plays without a note, and takes a channel from any note.
+    kick: { note: 'e2', penv: 36, pdecay: 0.08, decay: 0.12, ayprio: 3 },
+    snare: { note: 'a3', penv: 12, pdecay: 0.04, aynoise: 1, aynoiseperiod: 8, decay: 0.14, ayprio: 3 },
 }
-const presetNames = Object.keys(presets)
+/** The names `s` accepts. A name's place here is the instrument tag of its notes. */
+export const presetNames = Object.keys(presets)
 
 const toSwitch = x => (x === true || Number(x) >= 0.5 ? 1 : 0)
 const number = (x, fallback) => (x === undefined ? fallback : Number(x))
@@ -53,14 +57,18 @@ function pitchEnvelope({ penv, pattack, pdecay }) {
         : [0, Number(penv), number(pattack, 0), Number(pdecay)]
 }
 
-/** The engine's record for one Strudel event. `pitch` is the event's MIDI pitch, `cps` the tempo in cycles
-    per second, `scale` the event's scale if it has one. Returns the instrument tag for the display too. */
-export function noteSound(value, { pitch, cps, scale }) {
+/** A Strudel event's controls over those of the preset its `s` names, with that preset's instrument tag. */
+export function withPreset(value) {
     const name = value.s ?? 'bass'
-    if (!(name in presets)) {
-        throw new Error(`Unknown AY/YM instrument "${name}". Choose ${presetNames.join(' or ')}, or set controls.`)
+    if (!presetNames.includes(name)) {
+        throw new Error(`Unknown AY/YM instrument "${name}". Choose ${presetNames.join(', ')}, or set controls.`)
     }
-    const v = { ...presets[name], ...value }
+    return { instrument: presetNames.indexOf(name), controls: { ...presets[name], ...value } }
+}
+
+/** The engine's record for a note with the controls `v`. `pitch` is its MIDI pitch, `cps` the tempo in cycles
+    per second, `scale` the event's scale if it has one. */
+export function noteSound(v, { pitch, cps, scale }) {
     const ornament = v.orn === undefined ? [] : ornamentSemitones([v.orn].flat().map(Number), pitch, scale)
     if (ornament.length > maxOrnamentSteps) {
         throw new Error(`orn: an ornament has at most ${maxOrnamentSteps} steps`)
@@ -95,5 +103,5 @@ export function noteSound(value, { pitch, cps, scale }) {
     if (!sound.every(Number.isFinite)) {
         throw new Error('A sound control of this note is not a number')
     }
-    return { instrument: presetNames.indexOf(name), sound }
+    return sound
 }

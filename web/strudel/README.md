@@ -19,11 +19,11 @@ Open the localhost URL printed by Vite. Select a chip and press **Play**. Edit t
 
 The playhead separates rendered history on the left from scheduled notes on the right. Expand **Chip ownership** to see which occurrence holds A, B, C, noise and envelope. An unallocated note can stay visible in the roll while another note uses its channel.
 
-For a production build, run `npm run build` after the WASM build, then `npm run preview` to test the resulting `dist/` directory. Use HTTPS or localhost for Web Audio. CMake writes the generated module to `web/strudel/public/engine.wasm`.
+For a production build, run `npm run build` after the WASM build, then `npm run preview` to test the resulting `dist/` directory. Use HTTPS or localhost for Web Audio. CMake writes the generated module to `web/strudel/public/engine.wasm`. Rebuild it after a change under `src/chip`: **Play** reports a module that is older than the page.
 
 ## A note's sound
 
-A note is a plain square tone unless controls say otherwise. An instrument is a function that sets controls, such as `const pluck = p => p.aynoise(1).noisehold(.04).decay(.14)`, applied as `pluck(note("c4 e4"))`. Times inside a note are in seconds, so the tempo doesn't stretch them. `s("bass")` and `s("pluck")` select two built-in sets of controls; a control on the note overrides the set's.
+A note is a plain square tone unless controls say otherwise. An instrument is a function that sets controls, such as `const pluck = p => p.aynoise(1).noisehold(.04).decay(.14)`, applied as `pluck(note("c4 e4"))`. Times inside a note are in seconds, so the tempo doesn't stretch them. `s` selects a built-in set of controls: `bass`, `pluck`, `kick` or `snare`; a control on the note overrides the set's. A drum has a pitch of its own, so `s("kick ~ snare ~")` plays without a note, and the highest priority, so it takes a channel from another note while it sounds. To have the drums share the bass's channel, give them its `pan` and the bass a lower `ayprio`.
 
 | Control | Sets |
 | --- | --- |

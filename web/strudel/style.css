@@ -6,8 +6,6 @@
     --muted: #a3b0a9;
     --line: #33413a;
     --panel: #1a221e;
-    --bass: #92cff0;
-    --pluck: #f0bc78;
     --accent: #c0eb9a;
 }
 
@@ -81,8 +79,6 @@ kbd { color: #d1e0d7; font-size: 0.73rem; }
 .legend { display: flex; flex-wrap: wrap; gap: 9px 14px; color: var(--muted); font-size: 0.77rem; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .legend i { width: 12px; height: 8px; border-radius: 2px; }
-.legend .bass { background: var(--bass); }
-.legend .pluck { background: var(--pluck); }
 .legend .contended { border: 1px dashed #bfcac3; }
 .timeline-key {
     display: grid;

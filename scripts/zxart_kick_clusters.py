@@ -7,8 +7,9 @@
 A kick is a sample that starts loud on a tone falling at least 7 semitones to under 125 Hz, dies
 out within 12 frames, has noise on its first two frames at most, and does not sound through the
 envelope. Each is played at the note the tunes mostly use it on, and its first 16 frames (level,
-pitch, tone and noise) are clustered with k-medoids. Prints each type with its medoid and, by the
-year of the tunes, an old (to 2004) and a fresh (from 2015) example. With an output folder,
+pitch, tone and noise) are clustered with k-medoids. Prints each type and, by the year of the
+tunes, an old (to 2004) and a fresh (from 2015) example: the one most tunes of that time use,
+among the half of the type nearest its medoid. With an output folder,
 writes those examples as WAV files and kicks.json, their frames.
 
 Needs numpy. The database comes from scripts/zxart_instruments_db.py.
@@ -219,7 +220,11 @@ def main():
 
     report = []
     for number, j in enumerate(sorted(range(types), key=lambda j: -(labels == j).sum()), 1):
-        members = [kicks[i] for i in np.where(labels == j)[0]]
+        indices = np.where(labels == j)[0]
+        members = [kicks[i] for i in indices]
+        # examples come from the half of the type nearest its medoid: the far half shades into other types
+        spread = dist[indices, medoids[j]]
+        core = [kicks[i] for i, d in zip(indices, spread) if d <= np.median(spread)]
         first_years = [y for y in (db.execute(f"SELECT min(year) FROM module WHERE id IN ({','.join(map(str, m['modules']))})")
                                    .fetchone()[0] for m in members) if y]
         medoid = kicks[medoids[j]]
@@ -229,7 +234,7 @@ def main():
         print(f"\ntype {number}: {entry['samples']} samples in {entry['tunes']} tunes; first used to {OLD}: {entry['old']}, "
               f"from {FRESH}: {entry['fresh']}")
         for era, in_era in (("old", lambda y: y <= OLD), ("fresh", lambda y: y >= FRESH)):
-            found = example(db, members, in_era)
+            found = example(db, core, in_era)
             if not found:
                 continue
             sample, tunes = found

@@ -30,7 +30,8 @@ zxtune's player of the format does each frame, and say where a format does not f
 
 The usage rows count what the patterns sound, played in the order of the positions: per sample,
 ornament, envelope shape and note, the times the note was struck, and the rows and frames it
-sounded for.
+sounded for. A usage row whose ornament slot has no definition plays no ornament: SQ-Tracker's
+slot 0, Pro Sound Maker's 32.
 
 ## The database
 
@@ -63,5 +64,5 @@ Tone offsets are stored modulo 4096, the size of the chip's tone period.
   on the channel's envelope being on.
 - Pro Sound Maker sets the envelope bit only while the level and the channel volume reach 15.
 - Global Tracker ORs the noise periods of the three channels together.
-- ProTracker 1, Global Tracker, uncompiled Sound Tracker, Sound Tracker 3 and ASC Sound Master
-  0.x are written from zxtune's sources alone: the corpus has no file of them.
+- ProTracker 1, Global Tracker, uncompiled Sound Tracker and ASC Sound Master 0.x are written
+  from zxtune's sources alone: the corpus has no file of them.

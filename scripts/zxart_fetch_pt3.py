@@ -24,13 +24,17 @@ PAGE = 100
 TRIES = 5
 
 
+class Failed(Exception):
+    pass
+
+
 def retry(fn, what):
     for i in range(TRIES):
         try:
             return fn()
         except Exception as e:
             if i == TRIES - 1:
-                sys.exit(f"error: {what} failed after {TRIES} tries: {e}; re-run to resume")
+                raise Failed(f"{what} failed after {TRIES} tries: {e}")
             print(f"  retry {what} in {2 << i}s: {e}")
             time.sleep(2 << i)
 
@@ -50,19 +54,15 @@ def download(url, dest):
 
 
 def resolve_authors(ids, names):
-    """Fill `names` (id -> author name) for ids not seen yet; ids the API can't resolve stay absent."""
-    todo = sorted(set(ids) - names.keys() - UNKNOWN)
+    """Fill `names` (id -> author name) for ids not seen yet; an id the API can't resolve gets None."""
+    todo = sorted(set(ids) - names.keys())
     for i in range(0, len(todo), 50):
         chunk = todo[i:i + 50]
         try:
             data = fetch_json(AUTHORS.format(ids=",".join(map(str, chunk))))["responseData"]["author"]
-        except (SystemExit, KeyError, TypeError):
+        except (Failed, KeyError, TypeError):
             data = []  # an author lookup must not fail the run
-        names.update({a["id"]: a["title"] for a in data if a.get("title")})
-        UNKNOWN.update(set(chunk) - names.keys())
-
-
-UNKNOWN = set()
+        names.update(dict.fromkeys(chunk) | {a["id"]: a["title"] for a in data if a.get("title")})
 
 
 def main(n, out, fmt):
@@ -92,7 +92,7 @@ def main(n, out, fmt):
                     file = dest.name
                     time.sleep(0.2)  # be polite to zxart
                 idx.write(json.dumps({k: t.get(k) for k in ("id", "title", "type", "authorIds")}
-                                     | {"authors": [{"id": a, "name": names[a]} for a in t.get("authorIds") or [] if a in names]}
+                                     | {"authors": [{"id": a, "name": names[a]} for a in t.get("authorIds") or [] if names.get(a)]}
                                      | {k: t.get(k) for k in ("year", "rating", "plays", "time")}
                                      | {"file": file}, ensure_ascii=False) + "\n")
                 idx.flush()
@@ -101,6 +101,9 @@ def main(n, out, fmt):
 
 
 if __name__ == "__main__":
-    main(int(sys.argv[1]) if len(sys.argv) > 1 else 100,
-         Path(sys.argv[2]) if len(sys.argv) > 2 else Path(".cache/zxart/pt3"),
-         sys.argv[3] if len(sys.argv) > 3 else "pt3")
+    try:
+        main(int(sys.argv[1]) if len(sys.argv) > 1 else 100,
+             Path(sys.argv[2]) if len(sys.argv) > 2 else Path(".cache/zxart/pt3"),
+             sys.argv[3] if len(sys.argv) > 3 else "pt3")
+    except Failed as e:
+        sys.exit(f"error: {e}; re-run to resume")

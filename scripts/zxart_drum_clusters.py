@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
-"""Find the drums among the samples of an instrument database and group each kind into types.
+"""Find the drums among the sounds of an instrument database and group each kind into types.
 
     python3 -I scripts/zxart_drum_clusters.py
     python3 -I scripts/zxart_drum_clusters.py tools/instrdump/corpus/zxart-top.sqlite .cache/zxart/drums
 
-A sound is a sample with the noise base the patterns play it on, played at the note the tunes
-mostly use it on. A drum is a sound that starts loud, is silent within 48 frames and does not
-sound through the envelope; classify() tells the kinds apart by what sounds in it: kick, snare,
-tom, closed and open hi-hat, crash, and other percussion. The first frames of each kind (level,
-pitch, tone, noise and its period) are clustered with k-medoids. Prints each type and, by the
-year of the tunes, an old (to 2004) and a fresh (from 2015) example: the one most tunes of that
-time use, among the half of the type nearest its medoid. With an output folder, writes those
-examples as WAV files and drums.json, their frames.
+A drum is a sound that starts loud and dies out; its kind is the drums zxart_sounds.parts() finds
+in it, which may be several at once: "kick+snare". The first frames of each kind (level, pitch,
+tone, noise and its period) are clustered with k-medoids. Prints each type and, by the year of
+the tunes, an old (to 2004) and a fresh (from 2015) example: the one most tunes of that time use,
+among the half of the type nearest its medoid. With an output folder, writes those examples as
+WAV files and drums.json, their frames.
 
 Needs numpy. The database comes from scripts/zxart_instruments_db.py.
 """
@@ -19,140 +17,31 @@ import collections
 import json
 import math
 import sqlite3
-import struct
 import sys
-import wave
 from pathlib import Path
 
 import numpy as np
 
-FRAMES = 64          # rendered per sound
-SILENT_BY = 48       # a drum has died out by this frame
-CLOCK = 1773400      # ZX Spectrum's AY, Hz
+sys.path.insert(0, str(Path(__file__).parent))   # python3 -I leaves the script's folder out
+import zxart_sounds as sounds_of                  # noqa: E402
+
 OLD, FRESH = 2004, 2015
-# kind: (frames its types are compared by, number of types)
-KINDS = {"kick": (16, 7), "snare": (24, 6), "tom": (24, 4), "closed hat": (8, 4), "open hat": (16, 4),
-         "crash": (48, 4), "other": (16, 3)}
-# AY-3-8910 output per level
-LEVELS = [0.0, 0.0100, 0.0145, 0.0211, 0.0307, 0.0455, 0.0645, 0.1074,
-          0.1266, 0.2050, 0.2922, 0.3728, 0.4925, 0.6353, 0.8056, 1.0]
+SMALLEST = 20        # a kind with fewer sounds is not split into types
 
 
-def hz(period):
-    return CLOCK / (16 * max(period, 1))
-
-
-def note_period(note):
-    """An approximate tone period of a tracker's note; its tables differ by a few percent."""
-    return round(3400 / 2 ** (note / 12))
-
-
-def render(length, loop, stops, lanes, base, noise_base):
-    """The frames of a sample by the rules of tools/instrdump/Model.h, as rows of
-    (level, tone on, tone period, noise on, noise period, envelope on)."""
-    def lane(name, i):
-        return lanes[name][i] if name in lanes else 0
-    out = np.zeros((FRAMES, 6))
-    pos = tone_acc = vol_acc = noise_acc = 0
-    for frame in range(FRAMES):
-        vol_acc = max(-15, min(15, vol_acc + lane("volSlide", pos)))
-        tone = tone_acc + lane("toneOfs", pos)
-        if lane("toneAcc", pos):
-            tone_acc = tone
-        noise = noise_acc + lane("noiseOfs", pos)
-        if lane("noiseAcc", pos):
-            noise_acc = noise
-        out[frame] = (max(0, min(15, lane("vol", pos) + vol_acc)), lane("tone", pos), (base + tone) & 0xFFF,
-                      lane("noise", pos), (noise if lane("noiseAbs", pos) else noise + noise_base) & 31, lane("env", pos))
-        pos += 1
-        if pos >= length:
-            if stops:
-                break
-            pos = loop
-    return out
-
-
-def load(db):
-    """Every sound the tunes play, with its usage summed over them and what classify() goes by."""
-    samples = {sid: (length, loop, stops, json.loads(lanes)) for sid, length, loop, stops, lanes in
-               db.execute("SELECT id, len, loop, stops, lanes FROM instrument WHERE kind = 'sample'")}
-    used = collections.defaultdict(lambda: {"notes": 0, "rows": 0, "env_rows": 0, "by_note": collections.Counter(),
-                                            "modules": set()})
-    totals = collections.Counter()
-    for sid, module, envelope, noise, note, notes, rows in db.execute(
-            "SELECT sample_id, module_id, envelope, noise, note, notes, rows FROM instrument_usage WHERE sample_id IS NOT NULL"):
-        lanes = samples[sid][3]
-        # the noise base tells sounds apart only where the sample's noise is added to it
-        based = "noise" in lanes and "noiseAbs" not in lanes
-        use = used[sid, noise if based else 0]
-        totals[sid] += notes
-        use["notes"] += notes
-        use["rows"] += rows
-        use["env_rows"] += rows if envelope >= 0 else 0
-        use["by_note"][note] += notes
-        use["modules"].add(module)
-    sounds = []
-    for (sid, noise), use in used.items():
-        # a base a sample seldom meets is another channel's: the chip has one
-        if use["notes"] < 0.2 * totals[sid]:
-            continue
-        note = max(use["by_note"], key=use["by_note"].get)
-        frames = render(*samples[sid], note_period(note), noise)
-        sounds.append({"id": sid, "noise": noise, "frames": frames, **use, **measure(frames, use)})
-    return sounds
-
-
-def measure(frames, use):
-    level, period = frames[:, 0], np.maximum(frames[:, 2], 1)
-    audible = level > 0
-    tone = np.where((frames[:, 1] > 0) & audible)[0]
-    noise = np.where((frames[:, 3] > 0) & audible)[0]
-    total = sum(use["by_note"].values())
-    return {
-        "length": int(np.where(audible)[0].max()) + 1 if audible.any() else 0,
-        "tone": tone, "noise_frames": noise,
-        "fall": 12 * math.log2(period[tone].max() / period[tone[0]]) if len(tone) > 1 else 0.0,  # semitones down
-        "low_hz": hz(period[tone].max()) if len(tone) else 0.0,
-        "noise_period": float(frames[noise, 4].mean()) if len(noise) else 0.0,
-        "pitches": sum(1 for count in use["by_note"].values() if count >= 0.05 * total),  # notes it is played on
-    }
-
-
-def classify(sound):
-    """The kind of drum a sound is, None when it is not one."""
-    frames, level = sound["frames"], sound["frames"][:, 0]
-    tone, noise, length = sound["tone"], sound["noise_frames"], sound["length"]
-    if sound["notes"] < 8 or level[:2].max() < 10 or length == 0 or length > SILENT_BY:
-        return None
-    # the envelope on silent frames lets a buzzer bass through after the hit: still a drum
-    if sound["env_rows"] > 0.3 * sound["rows"] and frames[level > 0, 5].any():
-        return None
-    falls = len(tone) > 1 and sound["fall"] >= 3
-    late_noise = int((noise >= 2).sum())
-    if len(noise) < length / 2:       # noise on its attack at most: the tone is the sound
-        if not falls:
-            # a steady hit is a drum only when it keeps to a note or two: on more it is a melodic pluck
-            return "other" if length <= 12 and sound["pitches"] <= 2 else None
-        if late_noise > 1:
-            return "snare" if length <= 24 else None
-        if tone[0] <= 1 and sound["fall"] >= 7 and sound["low_hz"] < 125 and level[12:24].mean() <= 3:
-            return "kick"
-        return "tom" if length <= 32 else None
-    if length <= 3:
-        return "closed hat"
-    if falls:
-        return "snare" if length <= 24 else None
-    # hiss with no falling body: a bright one is a cymbal, a dark one a snare
-    bright = sound["noise_period"] <= 5 or (len(tone) and hz(np.median(frames[tone, 2])) >= 1000)
-    if length > 16:
-        return "crash"
-    return "open hat" if bright else "snare"
+def compared_frames(kind):
+    """How much of a kind's start its types are compared by: a crash is long, a closed hat is over at once."""
+    if "crash" in kind:
+        return 48
+    if kind == "closed-hat":
+        return 8
+    return 16 if kind == "kick" else 24
 
 
 def shape(sound, frames):
     """What two sounds of a kind are compared by: level, pitch where it sounds, and what sounds."""
     f = sound["frames"][:frames]
-    amp = f[:, 0] / 15
+    amp = np.minimum(f[:, 0], 15) / 15
     tone = (f[:, 1] > 0) & (amp > 0)
     noise = (f[:, 3] > 0) & (amp > 0)
     pitch, last = np.zeros(frames), 0.0
@@ -212,40 +101,14 @@ def example(db, members, in_era):
 def describe(sound):
     frames, tone, noise = sound["frames"], sound["tone"], sound["noise_frames"]
     return {"frames": sound["length"], "tone_frames": len(tone), "noise_frames": len(noise),
-            "from_hz": round(hz(frames[tone[0], 2])) if len(tone) else None,
-            "to_hz": round(hz(frames[tone[-1], 2])) if len(tone) else None,
+            "from_hz": round(sounds_of.hz(frames[tone[0], 2])) if len(tone) else None,
+            "to_hz": round(sounds_of.hz(frames[tone[-1], 2])) if len(tone) else None,
             "noise_period": round(sound["noise_period"]) if len(noise) else None}
-
-
-def write_wav(path, frames, rate=44100, frame_rate=50):
-    """One AY channel, as the chip mixes a tone and noise."""
-    per_frame = rate // frame_rate
-    tick = CLOCK / 8 / rate           # the chip's divider steps per output sample
-    tone_count = noise_count = 0.0
-    tone_out, lfsr, data = 1, 1, []
-    for level, tone_on, tone_period, noise_on, noise_period, _ in frames:
-        for _ in range(per_frame):
-            tone_count += tick
-            while tone_count >= max(tone_period, 1):
-                tone_count -= max(tone_period, 1)
-                tone_out ^= 1
-            noise_count += tick
-            while noise_count >= 2 * max(noise_period, 1):
-                noise_count -= 2 * max(noise_period, 1)
-                lfsr = (lfsr >> 1) | (((lfsr ^ (lfsr >> 3)) & 1) << 16)
-            high = (tone_out or not tone_on) and ((lfsr & 1) or not noise_on)
-            data.append(LEVELS[int(level)] if high else 0.0)
-    data += [0.0] * (rate // 10)
-    with wave.open(str(path), "wb") as out:
-        out.setnchannels(1)
-        out.setsampwidth(2)
-        out.setframerate(rate)
-        out.writeframes(struct.pack(f"<{len(data)}h", *(int(s * 24000) for s in data)))
 
 
 def cluster(db, kind, sounds, out):
     """The types of one kind of drum, largest first, each with its old and fresh example."""
-    frames, types = KINDS[kind]
+    frames, types = compared_frames(kind), min(7, max(2, len(sounds) // 60))
     shapes = np.array([shape(s, frames) for s in sounds])
     dist = np.sqrt(((shapes[:, None, :] - shapes[None, :, :]) ** 2).sum(-1))
     medoids, labels, _ = min((k_medoids(dist, types, seed) for seed in range(40)), key=lambda result: result[2])
@@ -270,14 +133,14 @@ def cluster(db, kind, sounds, out):
                 continue
             sound, tunes = found
             _, title, year, _, authors = tunes[0]
-            shown = max(16, min(FRAMES, sound["length"]))
+            shown = max(16, min(sounds_of.FRAMES, sound["length"]))
             entry["examples"][era] = {"id": sound["id"], "noise": sound["noise"], "tunes": len(tunes), "title": title,
                                       "year": year, "authors": authors, **describe(sound),
-                                      "rows": sound["frames"][:shown, :5].astype(int).tolist()}
+                                      "rows": sound["frames"][:shown].astype(int).tolist()}
             print(f"    {era:5s} {sound['id']} noise {sound['noise']:2d}  in {len(tunes)} tunes, e.g. {authors} - {title} ({year})")
             print("          level " + " ".join(f"{int(v):2d}" for v in sound["frames"][:16, 0]))
             if out:
-                write_wav(out / f"{kind.replace(' ', '_')}_{number}_{era}.wav", sound["frames"][:shown + 1])
+                sounds_of.write_wav(out / f"{kind}_{number}_{era}.wav", sound["frames"][:shown + 1])
         report.append(entry)
     return report
 
@@ -288,13 +151,17 @@ def main():
     if out:
         out.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(db_path)
-    sounds = load(db)
+    sounds = sounds_of.load(db)
     by_kind = collections.defaultdict(list)
     for sound in sounds:
-        by_kind[classify(sound)].append(sound)
-    print(f"{len(sounds)} sounds in use, {len(sounds) - len(by_kind[None])} of them drums")
-    report = [{"kind": kind, "sounds": len(by_kind[kind]), "types": cluster(db, kind, by_kind[kind], out)}
-              for kind in KINDS if len(by_kind[kind]) >= KINDS[kind][1]]
+        found, dies = sounds_of.parts(sound)
+        if dies and found:
+            by_kind[sounds_of.kind(found)].append(sound)
+    print(f"{len(sounds)} sounds in use, {sum(map(len, by_kind.values()))} of them drums")
+    for kind, members in sorted(by_kind.items(), key=lambda item: -len(item[1])):
+        print(f"  {kind:22s} {len(members)}")
+    report = [{"kind": kind, "sounds": len(members), "types": cluster(db, kind, members, out)}
+              for kind, members in sorted(by_kind.items(), key=lambda item: -len(item[1])) if len(members) >= SMALLEST]
     if out:
         (out / "drums.json").write_text(json.dumps(report, ensure_ascii=False, indent=1))
         print(f"\nwrote {out}")

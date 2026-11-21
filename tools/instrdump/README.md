@@ -19,9 +19,12 @@ python3 -I scripts/zxart_instruments_db.py                        # writes .cach
 [corpus/zxart-top.sqlite](corpus/zxart-top.sqlite) is the database of the 997 top-rated zxart tunes as
 of November 2026, 811 of them tracker modules.
 
-`python3 -I scripts/zxart_drum_clusters.py` finds the drums among the database's samples (kick,
-snare, tom, hi-hats, crash, other percussion) and groups each kind into types, each with an old
-and a fresh example.
+`python3 -I scripts/zxart_instrument_tags.py` tags the samples and ornaments of the database by
+what they are and how the tunes use them: drums, bass, melody, arpeggio, buzzer and its interval,
+chords of ornaments. `python3 -I scripts/zxart_drum_clusters.py` groups the drums of each kind,
+combined hits like kick+snare among them, into types with an old and a fresh example. Both go by
+`scripts/zxart_sounds.py`: a sample as the tunes play it, on a noise base and through the
+envelope or not.
 
 `build/instrdump/instrdump MODULE` prints one module; it exits with 1 for a file that is not a
 tracker module zxtune's AY parsers read (an AY or PSG dump, an MP3, another chip's module).
@@ -53,6 +56,7 @@ slot 0, Pro Sound Maker's 32.
 | `slot` | where an instrument occurs: module, chip, kind, slot number |
 | `usage` | the usage rows, by slot numbers |
 | `note_table` | a tracker's note table: the tone period of each of its 96 notes |
+| `tag` | written by `scripts/zxart_instrument_tags.py`: an instrument's tags, each with the share of its notes it holds for |
 | `instrument_usage` | view: `usage` with the instrument ids of its sample and ornament |
 
 An instrument that several modules share is one `instrument` row with a `slot` row per occurrence.

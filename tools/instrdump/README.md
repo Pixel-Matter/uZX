@@ -19,8 +19,9 @@ python3 -I scripts/zxart_instruments_db.py                        # writes .cach
 [corpus/zxart-top.sqlite](corpus/zxart-top.sqlite) is the database of the 997 top-rated zxart tunes as
 of November 2026, 811 of them tracker modules.
 
-`python3 -I scripts/zxart_kick_clusters.py` finds the kick drums among the database's samples
-and groups them into types, each with an old and a fresh example.
+`python3 -I scripts/zxart_drum_clusters.py` finds the drums among the database's samples (kick,
+snare, tom, hi-hats, crash, other percussion) and groups each kind into types, each with an old
+and a fresh example.
 
 `build/instrdump/instrdump MODULE` prints one module; it exits with 1 for a file that is not a
 tracker module zxtune's AY parsers read (an AY or PSG dump, an MP3, another chip's module).
@@ -35,8 +36,8 @@ offsets. After its last step a sequence goes on from its loop step or stops the 
 zxtune's player of the format does each frame, and say where a format does not fit.
 
 The usage rows count what the patterns sound, played in the order of the positions: per sample,
-ornament, envelope shape and note, the times the note was struck, and the rows and frames it
-sounded for. A usage row whose ornament slot has no definition plays no ornament: SQ-Tracker's
+ornament, envelope shape, noise base and note, the times the note was struck, and the rows and
+frames it sounded for. The noise base is what the pattern adds to the sample's noise period. A usage row whose ornament slot has no definition plays no ornament: SQ-Tracker's
 slot 0, Pro Sound Maker's 32.
 
 ## The database
@@ -57,7 +58,7 @@ Tone offsets are stored modulo 4096, the size of the chip's tone period.
 ## What the dump leaves out
 
 - What a pattern does to a note besides choosing its sample, ornament and envelope shape: the
-  channel volume, the noise base, slides and vibrato, the envelope period, sample and ornament
+  channel volume, slides and vibrato, the envelope period, sample and ornament
   offsets.
 - ProTracker 1 and Sound Tracker read the ornament at the sample's position, so the two differ
   from the dump once a sample has looped.

@@ -81,7 +81,7 @@ public:
     void SetNoGliss() override {}
     void SetEnvelope(uint_t type, uint_t) override { tracks_.envelope(static_cast<int>(type)); }
     void SetNoEnvelope() override { tracks_.envelope(-1); }
-    void SetNoiseAddon(int_t) override {}
+    void SetNoiseAddon(int_t value) override { tracks_.noise(value); }
 
     void finish() { tracks_.play(order_, PT2::DEFAULT_SAMPLE, PT2::DEFAULT_ORNAMENT, module_.usage); }
 

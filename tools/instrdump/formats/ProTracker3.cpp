@@ -78,8 +78,15 @@ public:
         }
     }
 
-    Formats::Chiptune::PatternBuilder& StartPattern(uint_t index) override { return tracks_.startPattern(index); }
-    void StartChannel(uint_t index) override { tracks_.startChannel(index); }
+    Formats::Chiptune::PatternBuilder& StartPattern(uint_t index) override {
+        auto& pattern = tracks_.startPattern(index);
+        setNoiseBase(0);  // the player starts every pattern without one
+        return pattern;
+    }
+    void StartChannel(uint_t index) override {
+        channel_ = index;
+        tracks_.startChannel(index);
+    }
     void SetRest() override { tracks_.rest(); }
     void SetNote(uint_t note) override { tracks_.note(note); }
     void SetSample(uint_t sample) override { tracks_.sample(sample); }
@@ -93,7 +100,7 @@ public:
     void SetEnvelopeSlide(uint_t, int_t) override {}
     void SetEnvelope(uint_t type, uint_t) override { tracks_.envelope(static_cast<int>(type)); }
     void SetNoEnvelope() override { tracks_.envelope(-1); }
-    void SetNoiseBase(uint_t) override {}
+    void SetNoiseBase(uint_t value) override { setNoiseBase(static_cast<int>(value)); }
 
     void finish() {
         tracks_.play(order_, PT3::DEFAULT_SAMPLE, PT3::DEFAULT_ORNAMENT, module_.usage);
@@ -108,10 +115,20 @@ public:
     }
 
 private:
+    /** The noise base is the chip's: the one a channel sets is every channel's. */
+    void setNoiseBase(int base) {
+        for (unsigned channel = 0; channel != Tracks::channels; ++channel) {
+            tracks_.startChannel(channel);
+            tracks_.noise(base);
+        }
+        tracks_.startChannel(channel_);
+    }
+
     Module& module_;
     Meta meta_;
     Tracks tracks_;
     std::vector<Tracks::Position> order_;
+    unsigned channel_ = 0;
     unsigned version_ = 6;
     unsigned turboPatternsOffset_ = 0;
 };

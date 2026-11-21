@@ -47,6 +47,10 @@ void Tracks::envelopeOn() {
     add(Kind::EnvelopeOn, 0);
 }
 
+void Tracks::noise(int base) {
+    add(Kind::Noise, base);
+}
+
 void Tracks::Finish(uint_t size) {
     if (pattern_) {
         pattern_->size = size;
@@ -129,6 +133,9 @@ void Tracks::play(const std::vector<Position>& order, unsigned defaultSample, un
                         break;
                     case Kind::EnvelopeOn:
                         channel.envelope = true;
+                        break;
+                    case Kind::Noise:
+                        channel.key.noise = event->value;
                         break;
                     case Kind::Tempo:
                         break;

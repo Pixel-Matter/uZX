@@ -98,6 +98,7 @@ struct Cell {
     bool noOrnament = false;
     std::optional<bool> envelope;
     std::optional<int> envelopeShape;
+    std::optional<unsigned> noiseBase;
     std::optional<unsigned> tempo;
 };
 
@@ -201,7 +202,7 @@ public:
     }
     void SetEnvelope() override { patterns_.cell().envelope = true; }
     void SetNoEnvelope() override { patterns_.cell().envelope = false; }
-    void SetNoiseBase(uint_t) override {}
+    void SetNoiseBase(uint_t base) override { patterns_.cell().noiseBase = base; }
     void SetBreakSample() override {}
     void SetBreakOrnament() override {}
     void SetNoOrnament() override { patterns_.cell().noOrnament = true; }
@@ -232,7 +233,16 @@ private:
 
     void replay(unsigned index, const Pattern& pattern) {
         tracks_.startPattern(index);
-        for (const auto& cell : pattern.cells) {
+        for (size_t at = 0; at != pattern.cells.size(); ++at) {
+            const auto& cell = pattern.cells[at];
+            // the noise base is the chip's and lasts across patterns; the player adds the base in effect after all of a
+            // line's cells to every channel's noise accumulator on every line, not once per note, so the dump reports
+            // the base the note is struck with
+            for (size_t last = at; last != pattern.cells.size() && pattern.cells[last].line == cell.line; ++last) {
+                if (pattern.cells[last].noiseBase) {
+                    noiseBase_ = *pattern.cells[last].noiseBase;
+                }
+            }
             tracks_.StartLine(cell.line);
             if (cell.tempo) {
                 tracks_.SetTempo(*cell.tempo);
@@ -246,6 +256,7 @@ private:
             // commands apply
             if (cell.note) {
                 channel.noOrnament = false;
+                tracks_.noise(static_cast<int>(noiseBase_));
                 tracks_.note(*cell.note);
             } else if (cell.rest) {
                 tracks_.rest();
@@ -290,6 +301,7 @@ private:
     std::vector<unsigned> order_;
     std::array<Channel, Tracks::channels> channels_;
     int envelopeShape_ = 0;
+    unsigned noiseBase_ = 0;
 };
 
 }  // namespace

@@ -90,7 +90,7 @@ public:
     void SetVolume(uint_t) override {}
     void SetEnvelope(uint_t type, uint_t) override { tracks_.envelope(static_cast<int>(type)); }
     void SetNoEnvelope() override { tracks_.envelope(-1); }
-    void SetNoise(uint_t) override {}
+    void SetNoise(uint_t value) override { tracks_.noise(static_cast<int>(value)); }
     void SetRetrig() override {}
     void SetSlide(int_t) override {}
     void SetNoteSlide(uint_t) override {}

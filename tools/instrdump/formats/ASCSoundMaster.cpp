@@ -71,6 +71,7 @@ struct Cell {
     std::optional<unsigned> ornament;
     std::optional<bool> envelope;
     std::optional<int> envelopeShape;
+    std::optional<unsigned> noise;
     bool continueSample = false;
     bool continueOrnament = false;
     std::optional<unsigned> tempo;
@@ -166,7 +167,7 @@ public:
     void SetEnvelopeTone(uint_t) override {}
     void SetEnvelope() override { patterns_.cell().envelope = true; }
     void SetNoEnvelope() override { patterns_.cell().envelope = false; }
-    void SetNoise(uint_t) override {}
+    void SetNoise(uint_t base) override { patterns_.cell().noise = base; }
     void SetContinueSample() override { patterns_.cell().continueSample = true; }
     void SetContinueOrnament() override { patterns_.cell().continueOrnament = true; }
     void SetGlissade(int_t) override {}
@@ -194,10 +195,15 @@ private:
         bool envelope = false;
         unsigned sample = 0;
         unsigned ornament = 0;
+        unsigned noise = 0;  // the channel's noise base
     };
 
     void replay(unsigned index, const Pattern& pattern) {
         tracks_.startPattern(index);
+        // the player resets every channel's noise base at a pattern's first line
+        for (auto& channel : channels_) {
+            channel.noise = 0;
+        }
         for (const auto& cell : pattern.cells) {
             tracks_.StartLine(cell.line);
             if (cell.tempo) {
@@ -230,9 +236,14 @@ private:
             if (cell.ornament) {
                 channel.ornament = *cell.ornament;
             }
+            if (cell.noise) {
+                channel.noise = *cell.noise;
+            }
             // a sample or ornament chosen in the pattern starts with the next note that does not continue the
             // current one
             if (cell.note) {
+                // a note starts the channel's noise from the base set so far; a later base waits for the next note
+                tracks_.noise(static_cast<int>(channel.noise));
                 if (!cell.continueSample) {
                     tracks_.sample(channel.sample);
                 }

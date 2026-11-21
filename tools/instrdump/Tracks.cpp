@@ -55,6 +55,10 @@ void Tracks::Finish(uint_t size) {
 
 void Tracks::StartLine(uint_t index) {
     line_ = index;
+    // Some parsers never finish a pattern that fills all its lines: it then ends at its last line, as in zxtune's players.
+    if (pattern_) {
+        pattern_->size = std::max(pattern_->size, index + 1);
+    }
 }
 
 void Tracks::SetTempo(uint_t tempo) {

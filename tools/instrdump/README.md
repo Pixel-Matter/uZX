@@ -16,6 +16,9 @@ python3 -I scripts/zxart_fetch_pt3.py 1000 .cache/zxart/top all   # the top-rate
 python3 -I scripts/zxart_instruments_db.py                        # writes .cache/zxart/top/instruments.sqlite
 ```
 
+[corpus/zxart-top.sqlite](corpus/zxart-top.sqlite) is the database of the 997 top-rated zxart tunes as
+of November 2026, 811 of them tracker modules.
+
 `build/instrdump/instrdump MODULE` prints one module; it exits with 1 for a file that is not a
 tracker module zxtune's AY parsers read (an AY or PSG dump, an MP3, another chip's module).
 

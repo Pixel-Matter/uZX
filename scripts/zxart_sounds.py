@@ -73,7 +73,7 @@ def load(db):
     used = collections.defaultdict(lambda: {
         "notes": 0, "rows": 0, "by_note": collections.Counter(), "rows_by_note": collections.Counter(),
         "ornaments": collections.Counter(), "modules": set(), "tables": collections.Counter(),
-        "shapes": collections.Counter(), "intervals": collections.Counter()})
+        "shapes": collections.Counter(), "intervals": collections.Counter(), "envelope_notes": collections.Counter()})
     totals = collections.Counter()
     for sid, ornament, envelope, period, noise, note, notes, rows, table, module in db.execute(
             "SELECT sample_id, ornament_id, envelope, envelope_period, noise, note, notes, rows, note_table, module_id "
@@ -94,7 +94,9 @@ def load(db):
         if through_envelope:
             use["shapes"][envelope] += rows
             if period and note < len(tables[table]):
-                use["intervals"][round(envelope_interval(envelope, period, tables[table][note]))] += rows
+                interval = round(envelope_interval(envelope, period, tables[table][note]))
+                use["intervals"][interval] += rows
+                use["envelope_notes"][note + interval] += rows      # the note the envelope's cycle sounds
     sounds = []
     for (sid, noise, envelope), use in used.items():
         # a context a sample seldom meets is another channel's doing: the chip has one noise and one envelope

@@ -127,7 +127,11 @@ def usage_tags(sound, chordal):
     tags = {WITH[part]: 1.0 for part in found if part in WITH}
     rows = sum(sound["ornaments"].values())
     arp = sum(count for ornament, count in sound["ornaments"].items() if ornament in chordal) / rows
-    low = sum(count for note, count in sound["rows_by_note"].items() if note < BASS_BELOW) / rows
+    by_note = sound["rows_by_note"]
+    driven = sound["frames"][:, 0] == sounds_of.ENVELOPE
+    if sound["envelope_notes"] and driven.any() and (sound["frames"][driven, 1] > 0).mean() < 0.5:
+        by_note = sound["envelope_notes"]       # a buzzer with its tone off sounds the envelope's note, not the written one
+    low = sum(count for note, count in by_note.items() if note < BASS_BELOW) / sum(by_note.values())
     tags.update({"arp": arp, "bass": (1 - arp) * low, "melody": (1 - arp) * (1 - low)})
     if sound["envelope"]:
         shape = max(sound["shapes"], key=sound["shapes"].get)

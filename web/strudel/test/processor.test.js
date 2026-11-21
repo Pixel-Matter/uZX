@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
 
+import {noteSound} from "../sound.js";
+
 const wasmPath = fileURLToPath(new URL("../public/engine.wasm", import.meta.url));
 const wasmModule = await WebAssembly.compile(await readFile(wasmPath));
 
@@ -176,4 +178,20 @@ test("a stalled display drops trace batches while audio continues", () => {
     const resumed = traceMessages(processor, 1);
     assert.equal(resumed.length, 3);
     assert.equal(new Uint32Array(resumed[2].records)[9], 1, "mark discontinuity on the next delivered trace");
+});
+
+test("a gate's sound reaches the engine, and the next gate without one is a plain tone", () => {
+    const processor = makeProcessor();
+    const {sound} = noteSound({aynoise: 1, pan: 1}, {pitch: 60, cps: 0.5});
+    commands(processor, [
+        {frame: 0, generation: 1, gate: true, occurrence: 7, instrument: 0, pitch: 60, velocity: 0.8, sound},
+        {frame: 0, generation: 1, gate: true, occurrence: 8, instrument: 0, pitch: 64, velocity: 0.8},
+    ]);
+    processRange(processor, 0, 512);
+    globalThis.currentFrame = 512;
+    send(processor, {type: "stop"});
+
+    const message = traceMessages(processor, 1)[0];
+    const [a, b, c, noise] = new Uint32Array(message.records).slice(3, 7);
+    assert.deepEqual([a, b, c, noise], [8, 0, 7, 7], "the noisy note takes the right channel and the noise");
 });

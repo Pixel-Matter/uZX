@@ -178,6 +178,9 @@ class UZXChipProcessor extends AudioWorkletProcessor {
         if (command.generation !== this.activeGeneration)
             return;
         if (command.gate) {
+            // A gate without a sound plays the engine's default, a plain tone.
+            if (command.sound)
+                this.heapFloat.set(command.sound, (this.engine.uzx_note_sound() >>> 0) >>> 2);
             if (!this.engine.uzx_note_on(command.occurrence >>> 0, command.instrument >>> 0,
                 Number(command.pitch) || 0, Math.max(0, Math.min(1, Number(command.velocity) || 0))))
                 this.rejectedNotes++;

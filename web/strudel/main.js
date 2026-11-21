@@ -3,6 +3,7 @@ import * as mini from '@strudel/mini'
 import { transpiler } from '@strudel/transpiler'
 import { initEditor, updateMiniLocations, highlightMiniLocations } from '@strudel/codemirror'
 import { ChipAudio } from './audio.js'
+import { noteSound } from './sound.js'
 import { ScoreView } from './score-view.js'
 import './style.css'
 
@@ -18,7 +19,6 @@ const ui = Object.fromEntries(
 )
 const engine = new ChipAudio()
 const view = new ScoreView(ui.score, ui.ownership, ui.owners)
-const instruments = new Map([['bass', 0], ['pluck', 1]])
 const scope = strudel.evalScope(strudel, mini)
 const evaluator = strudel.repl({ transpiler, getTime: () => engine.currentFrame / engine.sampleRate })
 const toFrame = seconds => Math.round(seconds * engine.sampleRate)
@@ -116,13 +116,8 @@ const routing = new strudel.Pattern(state => {
 let commands = []
 let batchPending = false
 
-function scheduleNote(hap, _relativeTime, durationSeconds, _cps, targetSeconds) {
-    const { s, note, freq, gain = 0.8, velocity = 1 } = hap.value ?? {}
-    const instrument = instruments.get(s ?? 'bass')
-    if (instrument === undefined) {
-        showError(new Error(`Unknown AY/YM instrument "${s}". Choose bass or pluck.`))
-        return
-    }
+function scheduleNote(hap, _relativeTime, durationSeconds, cps, targetSeconds) {
+    const { note, freq, gain = 0.8, velocity = 1 } = hap.value ?? {}
     if (note === undefined && freq === undefined) return
     const pitch = note === undefined
         ? strudel.freqToMidi(Number(freq))
@@ -130,6 +125,14 @@ function scheduleNote(hap, _relativeTime, durationSeconds, _cps, targetSeconds) 
     const level = Math.max(0, Math.min(1, Number(velocity) * Number(gain)))
     if (!(durationSeconds > 0) || !Number.isFinite(durationSeconds)
         || !Number.isFinite(pitch) || pitch < 0 || pitch > 127 || !(level > 0)) return
+    let instrument
+    let sound
+    try {
+        ({ instrument, sound } = noteSound(hap.value, { pitch, cps, scale: hap.context.scale }))
+    } catch (error) {
+        showError(error)
+        return
+    }
 
     const frame = toFrame(targetSeconds)
     const offFrame = Math.max(frame + 1, toFrame(targetSeconds + durationSeconds))
@@ -138,7 +141,7 @@ function scheduleNote(hap, _relativeTime, durationSeconds, _cps, targetSeconds) 
     const generation = hap.context.chipGeneration
     const occurrence = nextOccurrence++
     const event = { frame, generation, occurrence, instrument, pitch, velocity: level }
-    commands.push({ ...event, gate: true })
+    commands.push({ ...event, gate: true, sound })
     if (offFrame < cutoff) commands.push({ ...event, frame: offFrame, gate: false })
     const scheduled = { ...event, end: Math.min(offFrame, cutoff), hap }
     view.addNote(scheduled)

@@ -81,6 +81,13 @@ OrnamentStep toOrnamentStep(int_t offset) {
     return {.noteOfs = offset};
 }
 
+/** A command that sets the attenuation of the channel (or of all three), or adds to it. */
+struct Attenuation {
+    bool global = false;
+    bool add = false;
+    int value = 0;
+};
+
 /** What one row of a pattern holds for its channel, as zxtune's player reads it. */
 struct Cell {
     std::optional<bool> enabled;
@@ -91,6 +98,7 @@ struct Cell {
     std::optional<unsigned> envelopePeriod;
     unsigned tempo = 0;
     unsigned tempoAddon = 0;
+    std::vector<Attenuation> attenuations;  // in the order of the row's commands
 };
 
 struct Pattern {
@@ -140,10 +148,18 @@ public:
         cell().envelopePeriod = period;
     }
     void SetGlissade(int_t) override {}
-    void SetAttenuation(uint_t) override {}
-    void SetAttenuationAddon(int_t) override {}
-    void SetGlobalAttenuation(uint_t) override {}
-    void SetGlobalAttenuationAddon(int_t) override {}
+    void SetAttenuation(uint_t attenuation) override {
+        cell().attenuations.push_back({.value = static_cast<int>(attenuation)});
+    }
+    void SetAttenuationAddon(int_t add) override {
+        cell().attenuations.push_back({.add = true, .value = static_cast<int>(add)});
+    }
+    void SetGlobalAttenuation(uint_t attenuation) override {
+        cell().attenuations.push_back({.global = true, .value = static_cast<int>(attenuation)});
+    }
+    void SetGlobalAttenuationAddon(int_t add) override {
+        cell().attenuations.push_back({.global = true, .add = true, .value = static_cast<int>(add)});
+    }
 
     void finish() {
         std::vector<Tracks::Position> order;
@@ -164,6 +180,7 @@ private:
         unsigned note = 0;
         int transposition = 0;
         std::optional<unsigned> framesLeft;  // until a sample that stops does, when it does
+        unsigned attenuation = 0;            // taken off every level of the sample
     };
 
     Cell& cell() { return pattern_->cells[line_]; }
@@ -215,6 +232,10 @@ private:
         const unsigned size = found == patterns_.end() ? 0 : found->second.size;
         for (unsigned chan = 0; chan != Tracks::channels; ++chan) {
             channels_[chan].transposition = position.Channels[chan].Transposition;
+            // the position gives each channel its attenuation again at the pattern's start
+            channels_[chan].attenuation = position.Channels[chan].Attenuation;
+            tracks_.startChannel(chan);
+            tracks_.volume(15 - std::min(channels_[chan].attenuation, 15u));
         }
         unsigned tempo = position.Tempo;
         std::optional<unsigned> lastTempo;
@@ -232,7 +253,7 @@ private:
                     if (attributes.EnabledEffects && cell->tempo) {
                         tempo = cell->tempo;
                     }
-                    playCell(*cell, channel);
+                    playCell(*cell, chan, attributes.EnabledEffects);
                     if (attributes.EnabledEffects && cell->tempoAddon) {
                         tempo = (tempo + cell->tempoAddon) & 31;
                     }
@@ -252,7 +273,30 @@ private:
         tracks_.Finish(size);
     }
 
-    void playCell(const Cell& cell, Channel& channel) {
+    /** The attenuation commands of a row; a row of a channel with its effects off has none. The sets of "all
+        channels" go to every channel at once, a set takes the whole byte and an addon wraps at 16.
+    */
+    void applyAttenuations(const Cell& cell, unsigned chan) {
+        for (const auto& command : cell.attenuations) {
+            for (unsigned target = 0; target != Tracks::channels; ++target) {
+                if (!command.global && target != chan) {
+                    continue;
+                }
+                auto& attenuation = channels_[target].attenuation;
+                attenuation = command.add ? static_cast<unsigned>(static_cast<int>(attenuation) + command.value) & 15
+                                          : static_cast<unsigned>(command.value);
+                tracks_.startChannel(target);
+                tracks_.volume(15 - std::min(attenuation, 15u));
+            }
+        }
+        tracks_.startChannel(chan);
+    }
+
+    void playCell(const Cell& cell, unsigned chan, bool effects) {
+        auto& channel = channels_[chan];
+        if (effects) {
+            applyAttenuations(cell, chan);
+        }
         if (cell.enabled == false) {
             channel.active = false;
             tracks_.rest();

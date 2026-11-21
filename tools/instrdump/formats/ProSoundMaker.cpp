@@ -4,6 +4,7 @@
 #include "formats/chiptune/aym/prosoundmaker.h"
 #include "module/players/aym/freq_tables.h"
 
+#include <algorithm>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -91,6 +92,7 @@ struct Cell {
     std::optional<unsigned> note;
     std::optional<unsigned> sample;
     std::optional<unsigned> ornament;
+    std::optional<unsigned> volume;
     std::vector<std::pair<Command, int>> commands;
 };
 
@@ -114,6 +116,13 @@ public:
     Formats::Chiptune::PatternBuilder& StartPattern(uint_t index) override {
         flush();
         tracks_.startPattern(index);
+        // the volume is 0 until a command sets it; the positions are known before the patterns
+        if (!order_.empty() && order_.front().pattern == index) {
+            for (int channel = 0; channel != Tracks::channels; ++channel) {
+                tracks_.startChannel(static_cast<unsigned>(channel));
+                tracks_.volume(0);
+            }
+        }
         return *this;
     }
     void Finish(uint_t size) override {
@@ -138,7 +147,7 @@ public:
     }
     void SetSample(uint_t sample) override { cell().sample = sample; }
     void SetOrnament(uint_t ornament) override { cell().ornament = ornament; }
-    void SetVolume(uint_t) override {}
+    void SetVolume(uint_t volume) override { cell().volume = volume; }
     void DisableOrnament() override { cell().commands.emplace_back(Cell::Command::NoOrnament, 0); }
     void SetEnvelopeReinit(bool) override { cell().commands.emplace_back(Cell::Command::EnvelopeReinit, 0); }
     void SetEnvelopeTone(uint_t type, uint_t tone) override {
@@ -179,6 +188,11 @@ private:
         if (cell.ornament) {
             tracks_.ornament(*cell.ornament);
             tracks_.envelope(-1);
+        }
+        // inexact: the volume is the base level a note starts its sample on, the player takes it up only at the next
+        // note; a command without a note is reported from its row on, though the sounding note keeps its level
+        if (cell.volume) {
+            tracks_.volume(std::min(*cell.volume, 15u));
         }
         for (const auto& [command, value] : cell.commands) {
             switch (command) {

@@ -73,6 +73,7 @@ struct Cell {
     std::optional<int> envelopeShape;
     std::optional<unsigned> envelopePeriod;
     std::optional<unsigned> noise;
+    std::optional<unsigned> volume;
     bool continueSample = false;
     bool continueOrnament = false;
     std::optional<unsigned> tempo;
@@ -163,7 +164,7 @@ public:
     void SetNote(uint_t note) override { patterns_.cell().note = note; }
     void SetSample(uint_t sample) override { patterns_.cell().sample = sample; }
     void SetOrnament(uint_t ornament) override { patterns_.cell().ornament = ornament; }
-    void SetVolume(uint_t) override {}
+    void SetVolume(uint_t volume) override { patterns_.cell().volume = volume; }
     void SetEnvelopeType(uint_t type) override { patterns_.cell().envelopeShape = static_cast<int>(type); }
     void SetEnvelopeTone(uint_t tone) override { patterns_.cell().envelopePeriod = tone; }
     void SetEnvelope() override { patterns_.cell().envelope = true; }
@@ -243,6 +244,11 @@ private:
             }
             if (cell.noise) {
                 channel.noise = *cell.noise;
+            }
+            // the volume scales every level of the channel as (volume + 1) * level / 16, from this cell on; neither a
+            // note nor a pattern resets it
+            if (cell.volume) {
+                tracks_.volume(std::min(*cell.volume, 15u));
             }
             // a sample or ornament chosen in the pattern starts with the next note that does not continue the
             // current one

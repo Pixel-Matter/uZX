@@ -100,6 +100,7 @@ struct Cell {
     std::optional<int> envelopeShape;
     std::optional<unsigned> envelopePeriod;
     std::optional<unsigned> noiseBase;
+    std::optional<unsigned> volume;
     std::optional<unsigned> tempo;
 };
 
@@ -192,7 +193,7 @@ public:
     }
     void SetSample(uint_t sample) override { patterns_.cell().sample = sample; }
     void SetOrnament(uint_t ornament) override { patterns_.cell().ornament = ornament; }
-    void SetVolume(uint_t) override {}
+    void SetVolume(uint_t volume) override { patterns_.cell().volume = volume; }
     // the player takes an envelope command without a shape or a period as the one that turns the envelope on
     void SetEnvelope(uint_t type, uint_t tone) override {
         if (type || tone) {
@@ -235,6 +236,15 @@ private:
 
     void replay(unsigned index, const Pattern& pattern) {
         tracks_.startPattern(index);
+        // a channel's volume starts at 0 and stays until a command sets it, as the sample's volume deltas only move
+        // the level around it
+        if (!started_) {
+            started_ = true;
+            for (int channel = 0; channel != Tracks::channels; ++channel) {
+                tracks_.startChannel(static_cast<unsigned>(channel));
+                tracks_.volume(0);
+            }
+        }
         for (size_t at = 0; at != pattern.cells.size(); ++at) {
             const auto& cell = pattern.cells[at];
             // the noise base is the chip's and lasts across patterns; the player adds the base in effect after all of a
@@ -296,6 +306,10 @@ private:
                 channel.envelope = *cell.envelope;
                 tracks_.envelope(channel.envelope ? envelopeShape_ : -1);
             }
+            // the volume, 1 to 15, is the level the sample's levels are scaled to; a note does not reset it
+            if (cell.volume) {
+                tracks_.volume(std::min(*cell.volume, 15u));
+            }
         }
         tracks_.Finish(pattern.size);
     }
@@ -308,6 +322,7 @@ private:
     std::array<Channel, Tracks::channels> channels_;
     int envelopeShape_ = 0;
     unsigned noiseBase_ = 0;
+    bool started_ = false;
 };
 
 }  // namespace

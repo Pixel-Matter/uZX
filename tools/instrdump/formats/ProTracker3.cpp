@@ -14,7 +14,6 @@ namespace PT3 = Formats::Chiptune::ProTracker3;
 Sample toSample(unsigned slot, const PT3::Sample& source) {
     Sample sample;
     sample.slot = slot;
-    sample.loop = source.GetLoop();
     for (const auto& line : source.Lines) {
         SampleStep step;
         step.vol = static_cast<int>(line.Level);
@@ -34,15 +33,26 @@ Sample toSample(unsigned slot, const PT3::Sample& source) {
         }
         sample.steps.push_back(step);
     }
+    // A loop at the size is a line that does not exist, which the player reads as a silent one for good.
+    if (source.GetLoop() < sample.steps.size()) {
+        sample.loop = source.GetLoop();
+    } else {
+        sample.stops = true;
+    }
     return sample;
 }
 
 Ornament toOrnament(unsigned slot, const PT3::Ornament& source) {
     Ornament ornament;
     ornament.slot = slot;
-    ornament.loop = source.GetLoop();
     for (const auto offset : source.Lines) {
         ornament.steps.push_back({.noteOfs = offset});
+    }
+    // A loop at the size is a line that does not exist, which the player reads as 0 for good.
+    ornament.loop = source.GetLoop();
+    if (ornament.loop >= ornament.steps.size()) {
+        ornament.loop = static_cast<unsigned>(ornament.steps.size());
+        ornament.steps.push_back({});
     }
     return ornament;
 }

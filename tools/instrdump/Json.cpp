@@ -73,8 +73,9 @@ void writeUsage(std::ostream& out, const Usage& usage) {
     bool first = true;
     for (const auto& [key, count] : usage) {
         out << (first ? "\n  " : ",\n  ") << "{\"sample\":" << key.sample << ",\"ornament\":" << key.ornament
-            << ",\"envelope\":" << key.envelope << ",\"noise\":" << key.noise << ",\"note\":" << key.note
-            << ",\"notes\":" << count.notes << ",\"rows\":" << count.rows << ",\"frames\":" << count.frames << '}';
+            << ",\"envelope\":" << key.envelope << ",\"envelopePeriod\":" << key.envelopePeriod
+            << ",\"noise\":" << key.noise << ",\"note\":" << key.note << ",\"notes\":" << count.notes
+            << ",\"rows\":" << count.rows << ",\"frames\":" << count.frames << '}';
         first = false;
     }
     out << ']';
@@ -91,6 +92,11 @@ void writeModule(std::ostream& out, const Module& module) {
     writeString(out, module.program);
     out << ",\"noteTable\":";
     writeString(out, module.noteTable);
+    out << ",\"notePeriods\":[";
+    for (size_t i = 0; i != module.notePeriods.size(); ++i) {
+        out << (i ? "," : "") << module.notePeriods[i];
+    }
+    out << ']';
     out << ",\n \"samples\":";
     writeSequences(out, module.samples);
     out << ",\n \"ornaments\":";

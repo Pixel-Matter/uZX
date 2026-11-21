@@ -47,6 +47,10 @@ void Tracks::envelopeOn() {
     add(Kind::EnvelopeOn, 0);
 }
 
+void Tracks::envelopePeriod(unsigned period) {
+    add(Kind::EnvelopePeriod, static_cast<int>(period));
+}
+
 void Tracks::noise(int base) {
     add(Kind::Noise, base);
 }
@@ -88,6 +92,7 @@ void Tracks::play(const std::vector<Position>& order, unsigned defaultSample, un
     }
     unsigned tempo = initialTempo_;
     int envelopeShape = 0;  // the chip has one envelope: the shape a channel sets is every channel's
+    unsigned envelopePeriod = 0;
 
     for (const auto& position : order) {
         const auto found = patterns_.find(position.pattern);
@@ -104,6 +109,10 @@ void Tracks::play(const std::vector<Position>& order, unsigned defaultSample, un
                 }
                 if (event->kind == Kind::Tempo) {
                     tempo = static_cast<unsigned>(event->value);
+                    continue;
+                }
+                if (event->kind == Kind::EnvelopePeriod) {
+                    envelopePeriod = static_cast<unsigned>(event->value);
                     continue;
                 }
                 if (event->channel < 0 || event->channel >= channels) {
@@ -137,6 +146,7 @@ void Tracks::play(const std::vector<Position>& order, unsigned defaultSample, un
                     case Kind::Noise:
                         channel.key.noise = event->value;
                         break;
+                    case Kind::EnvelopePeriod:
                     case Kind::Tempo:
                         break;
                 }
@@ -144,6 +154,7 @@ void Tracks::play(const std::vector<Position>& order, unsigned defaultSample, un
             for (size_t index = 0; index != state.size(); ++index) {
                 if (state[index].sounds) {
                     state[index].key.envelope = state[index].envelope ? envelopeShape : -1;
+                    state[index].key.envelopePeriod = state[index].envelope ? envelopePeriod : 0;
                     auto& count = usage[state[index].key];
                     count.notes += struck[index];
                     count.rows += 1;

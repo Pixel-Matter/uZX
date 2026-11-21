@@ -85,7 +85,7 @@ Ornament toOrnament(unsigned slot, const PSM::Ornament& source) {
     which is not the order of the module's bytes.
 */
 struct Cell {
-    enum class Command { Envelope, NoOrnament, EnvelopeReinit };
+    enum class Command { Envelope, EnvelopePeriod, NoOrnament, EnvelopeReinit };
 
     std::optional<bool> enabled;
     std::optional<unsigned> note;
@@ -141,9 +141,12 @@ public:
     void SetVolume(uint_t) override {}
     void DisableOrnament() override { cell().commands.emplace_back(Cell::Command::NoOrnament, 0); }
     void SetEnvelopeReinit(bool) override { cell().commands.emplace_back(Cell::Command::EnvelopeReinit, 0); }
-    void SetEnvelopeTone(uint_t type, uint_t) override {
+    void SetEnvelopeTone(uint_t type, uint_t tone) override {
         cell().commands.emplace_back(Cell::Command::Envelope, static_cast<int>(type));
+        cell().commands.emplace_back(Cell::Command::EnvelopePeriod, static_cast<int>(tone));
     }
+    // unreported: the player sets the period only at a later note, from the note plus the position's transposition
+    // and only while the envelope is reinitialised, so it depends on running state
     void SetEnvelopeNote(uint_t type, uint_t) override {
         cell().commands.emplace_back(Cell::Command::Envelope, static_cast<int>(type));
     }
@@ -182,6 +185,10 @@ private:
                 case Cell::Command::Envelope:
                     tracks_.envelope(value);
                     tracks_.ornament(noOrnament);
+                    break;
+                case Cell::Command::EnvelopePeriod:
+                    // the player sets the chip's period when it reads the command; a note after a reinit sets it again
+                    tracks_.envelopePeriod(static_cast<unsigned>(value));
                     break;
                 case Cell::Command::NoOrnament:
                     tracks_.ornament(noOrnament);

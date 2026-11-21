@@ -71,6 +71,7 @@ struct Cell {
     std::optional<unsigned> ornament;
     std::optional<bool> envelope;
     std::optional<int> envelopeShape;
+    std::optional<unsigned> envelopePeriod;
     std::optional<unsigned> noise;
     bool continueSample = false;
     bool continueOrnament = false;
@@ -164,7 +165,7 @@ public:
     void SetOrnament(uint_t ornament) override { patterns_.cell().ornament = ornament; }
     void SetVolume(uint_t) override {}
     void SetEnvelopeType(uint_t type) override { patterns_.cell().envelopeShape = static_cast<int>(type); }
-    void SetEnvelopeTone(uint_t) override {}
+    void SetEnvelopeTone(uint_t tone) override { patterns_.cell().envelopePeriod = tone; }
     void SetEnvelope() override { patterns_.cell().envelope = true; }
     void SetNoEnvelope() override { patterns_.cell().envelope = false; }
     void SetNoise(uint_t base) override { patterns_.cell().noise = base; }
@@ -225,6 +226,10 @@ private:
                     }
                 }
                 tracks_.startChannel(static_cast<unsigned>(cell.channel));
+            }
+            // the period a note carries is set with the shape, before the note, and is the chip's too
+            if (cell.envelopePeriod) {
+                tracks_.envelopePeriod(*cell.envelopePeriod);
             }
             if (cell.envelope) {
                 channel.envelope = *cell.envelope;

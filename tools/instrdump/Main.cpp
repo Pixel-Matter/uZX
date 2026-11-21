@@ -12,6 +12,7 @@
 #include "binary/container_factories.h"
 #include "formats/chiptune/aym/turbosound.h"
 #include "formats/chiptune/decoders.h"
+#include "module/players/aym/freq_tables.h"
 
 #include <fstream>
 #include <iostream>
@@ -59,6 +60,10 @@ std::optional<Module> readModule(const std::vector<Format>& formats, const Binar
         Module module;
         if (format.read(data, module)) {
             module.format = format.decoder->GetDescription();
+            if (!module.noteTable.empty()) {
+                const auto periods = ::Module::AYM::GetFreqTable(module.noteTable);
+                module.notePeriods.assign(periods.begin(), periods.end());
+            }
             return module;
         }
     }

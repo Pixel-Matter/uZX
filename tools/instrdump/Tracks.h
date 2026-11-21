@@ -35,6 +35,7 @@ public:
     void ornament(unsigned slot);
     void envelope(int shape);  // turns the channel's envelope on with this shape, which is the chip's; -1 turns it off
     void envelopeOn();         // turns it on with the shape the chip has
+    void envelopePeriod(unsigned period);  // the chip's envelope period from here on, whichever channel sets it
     void noise(int base);      // what the patterns add to the noise period of the channel's sample from here on
 
     void Finish(uint_t size) override;
@@ -48,7 +49,7 @@ public:
     void play(const std::vector<Position>& order, unsigned defaultSample, unsigned defaultOrnament, Usage& usage) const;
 
 private:
-    enum class Kind { Note, Rest, Sample, Ornament, Envelope, EnvelopeOn, Noise, Tempo };
+    enum class Kind { Note, Rest, Sample, Ornament, Envelope, EnvelopeOn, EnvelopePeriod, Noise, Tempo };
 
     struct Event {
         unsigned line = 0;

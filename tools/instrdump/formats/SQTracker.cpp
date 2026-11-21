@@ -88,6 +88,7 @@ struct Cell {
     std::optional<unsigned> sample;
     std::optional<unsigned> ornament;
     std::optional<int> envelope;
+    std::optional<unsigned> envelopePeriod;
     unsigned tempo = 0;
     unsigned tempoAddon = 0;
 };
@@ -134,7 +135,10 @@ public:
         cell().sample = sample;
     }
     void SetOrnament(uint_t ornament) override { cell().ornament = ornament; }
-    void SetEnvelope(uint_t type, uint_t) override { cell().envelope = static_cast<int>(type); }
+    void SetEnvelope(uint_t type, uint_t period) override {
+        cell().envelope = static_cast<int>(type);
+        cell().envelopePeriod = period;
+    }
     void SetGlissade(int_t) override {}
     void SetAttenuation(uint_t) override {}
     void SetAttenuationAddon(int_t) override {}
@@ -255,6 +259,10 @@ private:
         }
         if (cell.note) {
             channel.note = *cell.note;
+        }
+        // the envelope command's period is the chip's, set with its shape
+        if (cell.envelopePeriod) {
+            tracks_.envelopePeriod(*cell.envelopePeriod);
         }
         if (cell.sample) {
             // a sample restarts the channel: no ornament, no envelope, unless the row sets them

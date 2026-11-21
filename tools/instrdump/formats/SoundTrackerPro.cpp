@@ -77,7 +77,8 @@ public:
     void SetSample(uint_t sample) override { tracks_.sample(sample); }
     void SetOrnament(uint_t ornament) override { tracks_.ornament(ornament); }
     // The player ignores the ornament while the envelope is on, and the parser pairs every envelope with ornament 0.
-    void SetEnvelope(uint_t type, uint_t) override {
+    void SetEnvelope(uint_t type, uint_t period) override {
+        tracks_.envelopePeriod(period);
         // type 0 keeps the shape that was set before
         if (type) {
             tracks_.envelope(static_cast<int>(type));

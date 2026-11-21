@@ -30,17 +30,19 @@ CREATE TABLE instrument(id TEXT PRIMARY KEY, kind TEXT NOT NULL, len INTEGER NOT
                         stops INTEGER NOT NULL, lanes TEXT NOT NULL);
 CREATE TABLE slot(module_id INTEGER, chip INTEGER, kind TEXT, slot INTEGER, instrument_id TEXT NOT NULL,
                   PRIMARY KEY(module_id, chip, kind, slot));
+CREATE TABLE note_table(name TEXT PRIMARY KEY, periods TEXT NOT NULL);
 CREATE TABLE usage(module_id INTEGER, chip INTEGER, sample_slot INTEGER, ornament_slot INTEGER, envelope INTEGER,
-                   noise INTEGER, note INTEGER, notes INTEGER, rows INTEGER, frames INTEGER,
-                   PRIMARY KEY(module_id, chip, sample_slot, ornament_slot, envelope, noise, note));
+                   envelope_period INTEGER, noise INTEGER, note INTEGER, notes INTEGER, rows INTEGER, frames INTEGER,
+                   PRIMARY KEY(module_id, chip, sample_slot, ornament_slot, envelope, envelope_period, noise, note));
 CREATE INDEX slot_instrument ON slot(instrument_id);
 CREATE INDEX slot_module ON slot(module_id, chip);
 CREATE INDEX module_author_author ON module_author(author_id);
 CREATE INDEX usage_module ON usage(module_id, chip);
 CREATE VIEW instrument_usage AS
 SELECT u.module_id, u.chip, s.instrument_id AS sample_id, o.instrument_id AS ornament_id,
-       u.envelope, u.noise, u.note, u.notes, u.rows, u.frames
+       u.envelope, u.envelope_period, u.noise, u.note, u.notes, u.rows, u.frames, c.note_table
 FROM usage u
+JOIN chip c ON c.module_id = u.module_id AND c.chip = u.chip
 LEFT JOIN slot s ON s.module_id = u.module_id AND s.chip = u.chip AND s.kind = 'sample' AND s.slot = u.sample_slot
 LEFT JOIN slot o ON o.module_id = u.module_id AND o.chip = u.chip AND o.kind = 'ornament' AND o.slot = u.ornament_slot;
 """
@@ -99,6 +101,8 @@ def add_module(db, tune, status, chips):
     for ci, c in enumerate(chips or []):
         db.execute("INSERT INTO chip VALUES(?,?,?,?,?,?,?)",
                    (mid, ci, c.get("format"), c.get("title"), c.get("author"), c.get("program"), c.get("noteTable")))
+        db.execute("INSERT OR IGNORE INTO note_table VALUES(?,?)",
+                   (c.get("noteTable"), json.dumps(c.get("notePeriods"), separators=(",", ":"))))
         for kind, key in (("sample", "samples"), ("ornament", "ornaments")):
             for inst in c.get(key, []):
                 if inst["len"] == 0:
@@ -107,10 +111,10 @@ def add_module(db, tune, status, chips):
                 db.execute("INSERT OR IGNORE INTO instrument VALUES(?,?,?,?,?,?)", (iid, kind, ln, loop, stops, lanes))
                 db.execute("INSERT OR REPLACE INTO slot VALUES(?,?,?,?,?)", (mid, ci, kind, inst["slot"], iid))
         for u in c.get("usage", []):
-            db.execute("INSERT INTO usage VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO UPDATE SET "
+            db.execute("INSERT INTO usage VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO UPDATE SET "
                        "notes = notes + excluded.notes, rows = rows + excluded.rows, frames = frames + excluded.frames",
-                       (mid, ci, u["sample"], u["ornament"], u["envelope"], u["noise"], u["note"], u["notes"],
-                        u["rows"], u["frames"]))
+                       (mid, ci, u["sample"], u["ornament"], u["envelope"], u["envelopePeriod"], u["noise"], u["note"],
+                        u["notes"], u["rows"], u["frames"]))
 
 
 def build(corpus, tmp, tool):

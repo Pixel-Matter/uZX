@@ -98,6 +98,7 @@ struct Cell {
     bool noOrnament = false;
     std::optional<bool> envelope;
     std::optional<int> envelopeShape;
+    std::optional<unsigned> envelopePeriod;
     std::optional<unsigned> noiseBase;
     std::optional<unsigned> tempo;
 };
@@ -196,6 +197,7 @@ public:
     void SetEnvelope(uint_t type, uint_t tone) override {
         if (type || tone) {
             patterns_.cell().envelopeShape = static_cast<int>(type);
+            patterns_.cell().envelopePeriod = tone;
         } else {
             patterns_.cell().envelope = true;
         }
@@ -285,6 +287,10 @@ private:
                     }
                 }
                 tracks_.startChannel(static_cast<unsigned>(cell.channel));
+            }
+            // the command's period is the chip's, set with its shape
+            if (cell.envelopePeriod) {
+                tracks_.envelopePeriod(*cell.envelopePeriod);
             }
             if (cell.envelope) {
                 channel.envelope = *cell.envelope;

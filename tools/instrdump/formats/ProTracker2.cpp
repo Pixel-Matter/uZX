@@ -79,7 +79,10 @@ public:
     void SetGlissade(int_t) override {}
     void SetNoteGliss(int_t, uint_t) override {}
     void SetNoGliss() override {}
-    void SetEnvelope(uint_t type, uint_t) override { tracks_.envelope(static_cast<int>(type)); }
+    void SetEnvelope(uint_t type, uint_t period) override {
+        tracks_.envelope(static_cast<int>(type));
+        tracks_.envelopePeriod(period);
+    }
     void SetNoEnvelope() override { tracks_.envelope(-1); }
     void SetNoiseAddon(int_t value) override { tracks_.noise(value); }
 

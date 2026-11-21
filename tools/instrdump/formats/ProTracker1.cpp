@@ -87,7 +87,10 @@ public:
     void SetSample(uint_t sample) override { tracks_.sample(sample); }
     void SetOrnament(uint_t ornament) override { tracks_.ornament(ornament); }
     void SetVolume(uint_t) override {}
-    void SetEnvelope(uint_t type, uint_t) override { tracks_.envelope(static_cast<int>(type)); }
+    void SetEnvelope(uint_t type, uint_t period) override {
+        tracks_.envelope(static_cast<int>(type));
+        tracks_.envelopePeriod(period);
+    }
     void SetNoEnvelope() override { tracks_.envelope(-1); }
 
     void finish() { tracks_.play(order_, defaultSample, defaultOrnament, module_.usage); }

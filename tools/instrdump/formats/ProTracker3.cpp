@@ -98,7 +98,10 @@ public:
     void SetOrnamentOffset(uint_t) override {}
     void SetVibrate(uint_t, uint_t) override {}
     void SetEnvelopeSlide(uint_t, int_t) override {}
-    void SetEnvelope(uint_t type, uint_t) override { tracks_.envelope(static_cast<int>(type)); }
+    void SetEnvelope(uint_t type, uint_t period) override {
+        tracks_.envelope(static_cast<int>(type));
+        tracks_.envelopePeriod(period);
+    }
     void SetNoEnvelope() override { tracks_.envelope(-1); }
     void SetNoiseBase(uint_t value) override { setNoiseBase(static_cast<int>(value)); }
 

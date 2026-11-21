@@ -9,6 +9,7 @@ rebuilt from scratch on every run. Identical instruments from different modules 
 (id = content hash, see canonical()); `slot` maps each module's slot numbers to them.
 """
 import hashlib
+import html
 import json
 import os
 import sqlite3
@@ -89,7 +90,7 @@ def extract(tool, path):
 def add_module(db, tune, status, chips):
     mid = tune["id"]
     db.execute("INSERT INTO module VALUES(?,?,?,?,?,?,?,?,?)",
-               (mid, tune.get("title"), num(tune.get("year"), int), num(tune.get("rating"), float),
+               (mid, html.unescape(tune.get("title") or ""), num(tune.get("year"), int), num(tune.get("rating"), float),
                 num(tune.get("plays"), int), tune.get("time"), tune.get("type"), tune.get("file"), status))
     for a in tune.get("authors") or []:
         if isinstance(a, dict) and isinstance(a.get("id"), int):

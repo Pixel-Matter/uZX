@@ -19,6 +19,9 @@ python3 -I scripts/zxart_instruments_db.py                        # writes .cach
 [corpus/zxart-top.sqlite](corpus/zxart-top.sqlite) is the database of the 997 top-rated zxart tunes as
 of November 2026, 811 of them tracker modules.
 
+`python3 -I scripts/zxart_kick_clusters.py` finds the kick drums among the database's samples
+and groups them into types, each with an old and a fresh example.
+
 `build/instrdump/instrdump MODULE` prints one module; it exits with 1 for a file that is not a
 tracker module zxtune's AY parsers read (an AY or PSG dump, an MP3, another chip's module).
 

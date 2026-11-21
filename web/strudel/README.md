@@ -1,4 +1,4 @@
-# uZX Strudel
+# Krendel
 
 Live-code one AY-3-8910 or YM2149 in the browser. The Strudel editor sends timed notes to a C++ engine running Ayumi in an AudioWorklet.
 

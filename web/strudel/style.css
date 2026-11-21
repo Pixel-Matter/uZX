@@ -13,6 +13,8 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; }
+footer { margin: 0 auto 24px; text-align: center; color: var(--muted); font-size: 0.84rem; }
+footer a { color: inherit; }
 main { width: min(1120px, 100% - 48px); margin: 36px auto 48px; }
 h1, h2, p { margin: 0; }
 h1 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.05em; }

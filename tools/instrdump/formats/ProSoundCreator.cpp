@@ -4,6 +4,7 @@
 #include "formats/chiptune/aym/prosoundcreator.h"
 #include "module/players/aym/freq_tables.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <map>
@@ -135,7 +136,13 @@ public:
             pattern_->size = size;
         }
     }
-    void StartLine(uint_t index) override { line_ = index; }
+    void StartLine(uint_t index) override {
+        line_ = index;
+        // the parser does not finish a pattern that fills all its lines: it ends at its last one, as in the player
+        if (pattern_) {
+            pattern_->size = std::max(pattern_->size, index + 1);
+        }
+    }
     void SetTempo(uint_t tempo) override { cell().tempo = tempo; }
 
     const Pattern* find(unsigned index) const {

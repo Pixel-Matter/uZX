@@ -34,6 +34,7 @@ public:
     void sample(unsigned slot);
     void ornament(unsigned slot);
     void envelope(int shape);  // turns the channel's envelope on with this shape, which is the chip's; -1 turns it off
+    void envelopeOn();         // turns it on with the shape the chip has
 
     void Finish(uint_t size) override;
     void StartLine(uint_t index) override;
@@ -46,7 +47,7 @@ public:
     void play(const std::vector<Position>& order, unsigned defaultSample, unsigned defaultOrnament, Usage& usage) const;
 
 private:
-    enum class Kind { Note, Rest, Sample, Ornament, Envelope, Tempo };
+    enum class Kind { Note, Rest, Sample, Ornament, Envelope, EnvelopeOn, Tempo };
 
     struct Event {
         unsigned line = 0;

@@ -43,6 +43,10 @@ void Tracks::envelope(int shape) {
     add(Kind::Envelope, shape);
 }
 
+void Tracks::envelopeOn() {
+    add(Kind::EnvelopeOn, 0);
+}
+
 void Tracks::Finish(uint_t size) {
     if (pattern_) {
         pattern_->size = size;
@@ -118,6 +122,9 @@ void Tracks::play(const std::vector<Position>& order, unsigned defaultSample, un
                         if (channel.envelope) {
                             envelopeShape = event->value;
                         }
+                        break;
+                    case Kind::EnvelopeOn:
+                        channel.envelope = true;
                         break;
                     case Kind::Tempo:
                         break;

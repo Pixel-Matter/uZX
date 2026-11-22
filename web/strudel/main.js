@@ -10,24 +10,26 @@ import { ScoreView, showInstruments } from './score-view.js'
 import './style.css'
 
 const example = `// An instrument is a function that sets controls. Times inside a note are in seconds.
-setcpm(120 / 4) // 120 bpm, four beats in a cycle
+setfps(50) // frames a second: a note starts on a frame, and its sound moves a step each frame
+setfpb(24) // the tempo: 24 frames in a beat, which is 125 bpm, and four beats in a cycle
+const f = 1 / fps          // a frame, to count times in
 const A = 0, B = .5, C = 1 // pan picks the chip channel
-const fps = 50, f = 1 / fps // a frame: the chip's sound changes 50 times a second
 
-const triBass = p => p.aytone(0).ayenv(1).aybuzz(1).ayshape("tri") // the envelope alone, at the note's pitch
-const envPitch = p => p.aytone(0).aybuzz(1).ayshape("tri")         // sets the envelope's pitch, takes no channel
+// T, N and E switch the tone, the noise and the chip's envelope, as tone(), noise() and envelope() do
+const triBass = p => p.T(0).E(1).envdrive(1).envshape("tri") // the envelope alone, at the note's pitch
+const envPitch = p => p.T(0).envdrive(1).envshape("tri")     // sets the envelope's pitch, takes no channel
 // a triad in scale steps from the root
-const pad = p => p.decay(25*f).sustain(.3).orn("0:2:4").ornstep(1/32).ayprio(1)
-const lead = p => p.aynoise(1).noisehold(2*f).decay(6*f).sustain(.6)
-  .penv(12).pdecay(3*f).vib(6).vibmod(.3).vibdelay(8*f).ayprio(1)
+const pad = p => p.decay(25*f).sustain(.3).orn("0:2:4").ornstep(3*f).prio(1)
+const lead = p => p.N(1).noisehold(2*f).decay(6*f).sustain(.6)
+  .penv(12).pdecay(3*f).vib(6).vibmod(.3).vibdelay(8*f).prio(1)
 const bendLead = p => lead(p).penv(-5).pdecay(12*f)
 
 // instrument() names controls for s("name"). A drum has its own note and the highest priority.
-// The kick is a tracker sample: its tone falls a step each frame, with noise on the first.
-instrument("kick", note("c2").orn("20.7:13.7:8.7:6.7:6.7:4.9:3.2:1.7:0.3")
-  .aynoise(1).noisehold(f).aynoiseperiod(8).decay(8.3*f).gain(1).ayprio(2))
-instrument("snare", note("a3").penv(12).pdecay(2*f).aynoise(1).aynoiseperiod(8).decay(7*f).ayprio(2))
-instrument("hat", note("c6").aytone(0).aynoise(1).aynoiseperiod(1).decay(2*f).ayprio(2))
+// The kick is a tracker sample: a table has a value for each frame, here the tone's period and the volume.
+instrument("kick", note("c2").periods("512:768:1024:1152:1152:1280:1408:1536:1664")
+  .vols("15:14:12:10:8:6:4:2:1:0").N(1).noisehold(f).noiseperiod(8).prio(2))
+instrument("snare", note("a3").penv(12).pdecay(2*f).N(1).noiseperiod(8).decay(7*f).prio(2))
+instrument("hat", note("c6").T(0).N(1).noiseperiod(1).decay(2*f).prio(2))
 
 const bass2 = note("g1 ~ g1 g1 a1 ~ a1 f#1")
 
@@ -35,8 +37,8 @@ stack(
   cat(
     triBass(note("b1 ~ b1 b1 ~ b1 d2 e2")),
     // a square tone through the envelope, which sounds a fifth below it
-    stack(envPitch(bass2), bass2.transpose(7).ayenv(1))
-  ).pan(B), // no ayprio, so the lowest priority: a drum takes this channel while it sounds
+    stack(envPitch(bass2), bass2.transpose(7).E(1))
+  ).pan(B), // no prio, so the lowest priority: a drum takes this channel while it sounds
   s("kick hat snare ~ kick kick snare hat").pan(B),
   pad(n("<[0 5 3 4] [0@3 3 4@2 6@2]>").scale("B3:minor")).pan(A),
   cat(
@@ -53,10 +55,11 @@ const engine = new ChipAudio()
 const view = new ScoreView(ui.score, ui.ownership, ui.owners)
 showInstruments(ui.legend, instrumentNames({}))
 
-let defining // the instruments that the code under evaluation has defined so far
+const defaultFps = 50 // a ZX Spectrum's frames
+let defining // what the code under evaluation has set so far: its instruments, frame rate and tempo in frames
 
-/** `instrument("hat", note("c6").aynoise(1).decay(.04))` in a pattern's code: `s("hat")` then plays notes with
-    these controls. The controls are a pattern's, or what a function such as `p => p.aynoise(1)` sets. */
+/** `instrument("hat", note("c6").noise(1).decay(.04))` in a pattern's code: `s("hat")` then plays notes with
+    these controls. The controls are a pattern's, or what a function such as `p => p.noise(1)` sets. */
 function instrument(name, definition) {
     // The transpiler turns a double-quoted name into a pattern: of two words if the name has a space.
     const [word, ...more] = name instanceof strudel.Pattern ? name.firstCycleValues : [name]
@@ -65,10 +68,28 @@ function instrument(name, definition) {
     if (typeof word !== 'string' || !/^\w+$/.test(word) || more.length || typeof controls !== 'object') {
         throw new Error('instrument("name", note("c2").decay(.1)) takes a one-word name and the controls of its notes')
     }
-    defining[word] = controls
+    defining.instruments[word] = controls
 }
 
-const scope = strudel.evalScope(strudel, mini, tonal, controls, { instrument })
+/** `setfps(50)` in a pattern's code: how many times a second the chip's sound changes. A note starts on a frame,
+    and its envelopes, ornament and tables move a step each frame. The code reads the rate as `fps`. */
+function setfps(rate) {
+    if (!Number.isInteger(rate) || rate < 1 || rate > 1000) {
+        throw new Error('setfps(50) takes a whole number of frames a second, from 1 to 1000')
+    }
+    defining.fps = globalThis.fps = rate
+}
+
+/** `setfpb(24)` in a pattern's code: the tempo as the frames in a beat, so that beats and their even parts start
+    on frames. A cycle has four beats unless `beats` says otherwise. */
+function setfpb(frames, beats = 4) {
+    if (!Number.isInteger(frames) || frames < 1 || !(beats > 0 && beats < Infinity)) {
+        throw new Error('setfpb(24) takes a whole number of frames in a beat, then the beats in a cycle if not 4')
+    }
+    defining.cycleFrames = frames * beats
+}
+
+const scope = strudel.evalScope(strudel, mini, tonal, controls, { instrument, setfps, setfpb, fps: defaultFps })
 const evaluator = strudel.repl({ transpiler, getTime: () => engine.currentFrame / engine.sampleRate })
 const toFrame = seconds => Math.round(seconds * engine.sampleRate)
 
@@ -121,7 +142,7 @@ function cycleTime(cycle) {
 
 function stage(entry, cycle) {
     const frame = toFrame(cycleTime(cycle))
-    engine.submit([{ frame, generation: entry.generation, switch: true }])
+    engine.submit([{ frame, generation: entry.generation, switch: true, frameRate: entry.fps }])
     view.cutScoreAt(frame)
     for (const note of sourceNotes) {
         note.end = Math.min(note.end, frame)
@@ -136,6 +157,7 @@ function query(entry, state) {
         ...hap.context,
         chipGeneration: entry.generation,
         chipInstruments: entry.instruments,
+        chipFps: entry.fps,
     }))
 }
 
@@ -169,7 +191,7 @@ const routing = new strudel.Pattern(state => {
 let commands = []
 let batchPending = false
 
-function scheduleNote(hap, _relativeTime, durationSeconds, cps, targetSeconds) {
+function scheduleNote(hap, _relativeTime, durationSeconds, _cps, targetSeconds) {
     let instrument
     let controls
     try {
@@ -178,7 +200,7 @@ function scheduleNote(hap, _relativeTime, durationSeconds, cps, targetSeconds) {
         showError(error)
         return
     }
-    const { note, freq, gain = 0.8, velocity = 1 } = controls
+    const { note, freq, gain = 1, velocity = 1 } = controls
     if (note === undefined && freq === undefined) return
     const pitch = note === undefined
         ? strudel.freqToMidi(Number(freq))
@@ -188,7 +210,7 @@ function scheduleNote(hap, _relativeTime, durationSeconds, cps, targetSeconds) {
         || !Number.isFinite(pitch) || pitch < 0 || pitch > 127 || !(level > 0)) return
     let sound
     try {
-        sound = noteSound(controls, { pitch, cps, scale: hap.context.scale })
+        sound = noteSound(controls, { pitch, scale: hap.context.scale, fps: hap.context.chipFps })
     } catch (error) {
         showError(error)
         return
@@ -234,14 +256,15 @@ async function evaluate() {
     const code = editor.state.doc.toString()
     await scope
     evaluator.setCps(scheduler.cps)
-    const defined = defining = {}
+    const defined = defining = { instruments: {}, fps: globalThis.fps = defaultFps }
     const pattern = await evaluator.evaluate(code, false)
     if (!pattern) throw evaluator.state.evalError ?? new Error('Pattern evaluation failed')
-    const cps = evaluator.scheduler.cps
+    // setfpb counts the tempo in frames, whichever of it and setfps the code calls first.
+    const cps = defined.cycleFrames ? defined.fps / defined.cycleFrames : evaluator.scheduler.cps
     if (!Number.isFinite(cps) || cps <= 0) throw new Error('Tempo must be a positive number')
     return {
         pattern, code, cps, locations: evaluator.state.miniLocations, generation: nextGeneration++,
-        instruments: defined,
+        instruments: defined.instruments, fps: defined.fps,
     }
 }
 
@@ -287,7 +310,7 @@ async function reEvaluate() {
         const entry = await evaluate()
         if (token !== transportToken) return
         if (entry.cps !== scheduler.cps) {
-            throw new Error('Stop and play again to apply a new setcps or setcpm tempo.')
+            throw new Error('Stop and play again to apply a new tempo.')
         }
         const scheduledThrough = scheduler.lastEnd
         const earliestTime = engine.currentFrame / engine.sampleRate + 0.025

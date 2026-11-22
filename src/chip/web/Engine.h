@@ -17,7 +17,7 @@ struct TraceVoice
     float level;
 };
 
-/** The ownership and sounding voices at one 50 Hz tick. An owner ID of 0 means unassigned. */
+/** The ownership and sounding voices at one frame's tick. An owner ID of 0 means unassigned. */
 struct TraceSnapshot
 {
     std::uint32_t sampleLow;
@@ -34,12 +34,13 @@ struct TraceSnapshot
 static_assert(sizeof(TraceVoice) == 16 && offsetof(TraceVoice, pitch) == 8);
 static_assert(sizeof(TraceSnapshot) == 296 && offsetof(TraceSnapshot, voices) == 40);
 
-/** How one note sounds. Every field is a float, so the page writes the record as 39 floats.
-    A switch is on from 0.5. Times are in seconds, pitches in semitones.
+/** How one note sounds. Every field is a float, so the page writes the record as uzx_sound_length() floats.
+    A switch is on from 0.5. Times are in frames, pitches in semitones.
 */
 struct NoteSound
 {
     static constexpr std::size_t maxOrnamentSteps = 16;
+    static constexpr std::size_t maxTableSteps = 64;
 
     float tone = 1.0f;             ///< a switch: the square wave sounds
     float noise = 0.0f;            ///< a switch: the noise sounds
@@ -62,30 +63,43 @@ struct NoteSound
     float pitchAttack = 0.0f;  ///< from the start offset to the peak
     float pitchDecay = 0.0f;   ///< from the peak to the note's own pitch
 
-    float vibratoRate = 0.0f;   ///< Hz; 0 for none
+    float vibratoRate = 0.0f;   ///< cycles in a frame; 0 for none
     float vibratoDepth = 0.0f;  ///< semitones each way
     float vibratoDelay = 0.0f;  ///< the vibrato starts this long after the note
 
     float ornamentStep = 0.0f;    ///< how long each ornament offset lasts; one frame at least
     float ornamentLength = 0.0f;  ///< how many offsets loop; 0 for none
+
+    // A table has a value for each frame of the note, and its last value holds.
+    float levelSteps = 0.0f;       ///< how many levels the table has; 0 for attack, decay and sustain instead
+    float toneSteps = 0.0f;        ///< how many tones the table has; 0 for the note's own pitch
+    float tonesArePeriods = 0.0f;  ///< a switch: the tones are the chip's tone periods, otherwise pitches
+
     std::array<float, maxOrnamentSteps> ornament{};  ///< pitch offsets
+    std::array<float, maxTableSteps> levels{};       ///< 0..1; a note whose table ends at 0 ends there
+    std::array<float, maxTableSteps> tones{};        ///< the pitch on the MIDI note scale, or the tone period
 };
 
-static_assert(sizeof(NoteSound) == 39 * sizeof(float) && offsetof(NoteSound, ornament) == 23 * sizeof(float));
+static_assert(sizeof(NoteSound) == 170 * sizeof(float) && offsetof(NoteSound, ornament) == 26 * sizeof(float));
 
 }  // namespace MoTool::uZX
 
 /** One engine per module instance. All audio and trace buffers are owned by the engine. */
 extern "C" {
 
-/** Configures the output and resets the clock. Pass 0 for AY or 1 for YM. Returns 1 on success. */
-int uzx_init(std::uint32_t sampleRate, int isYm) noexcept;
+/** Configures the output and resets the clock. Pass 0 for AY or 1 for YM. The frame rate, 1 to 1000 a second, is
+    how often the sound changes: a note starts on a frame, and its times are in frames. Returns 1 on success.
+*/
+int uzx_init(std::uint32_t sampleRate, int isYm, std::uint32_t frameRate) noexcept;
 
 /** Silences the chip, clears notes and trace, and resets the clock to sample 0. */
 void uzx_reset() noexcept;
 
 /** The sound of the next note-on. Any note-on, accepted or not, sets it back to the default: a plain tone. */
 MoTool::uZX::NoteSound* uzx_note_sound() noexcept;
+
+/** How many floats the sound is, for the page to check that it writes this engine's record. */
+std::uint32_t uzx_sound_length() noexcept;
 
 /** Opens a gate at the current sample, sounding as uzx_note_sound() says. ID 0 is reserved.
     The instrument is a tag for the trace. Pitch is on the MIDI note scale, including fractional semitones.

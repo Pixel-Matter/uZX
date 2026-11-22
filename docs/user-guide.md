@@ -16,7 +16,7 @@ The screenshots show the macOS build using the [Guide demo project](../tests/fix
 
 ### Krendel browser prototype
 
-The browser editor plays Strudel patterns through one AY or YM chip. Select a chip, press **Play**, then edit the pattern and choose **Re-evaluate**; **Play** becomes **Stop** while a pattern plays. `Ctrl+Enter` plays or re-evaluates and `Ctrl+.` stops, as in Strudel. Controls on a note set its chip timbre, level and pitch envelopes, vibrato and ornament, and `instrument("kick", …)` in the pattern names a set of controls, a drum for one, that `s("kick")` plays. The piano roll shows scheduled notes and rendered voices. **Chip ownership** shows which notes hold the three channels and shared generators. [Build and run the browser editor](../web/strudel/README.md)
+The browser editor plays Strudel patterns through one AY or YM chip. Select a chip, press **Play**, then edit the pattern and choose **Re-evaluate**; **Play** becomes **Stop** while a pattern plays. `Ctrl+Enter` plays or re-evaluates and `Ctrl+.` stops, as in Strudel. Controls on a note set its chip timbre, level and pitch envelopes, vibrato and ornament, or its volume and tone frame by frame, as a tracker's sample does. `instrument("kick", …)` in the pattern names a set of controls, a drum for one, that `s("kick")` plays. `setfps(50)` sets how many times a second the chip's sound changes, and `setfpb(24)` the tempo as the frames in a beat, so that notes start on frames. The piano roll shows scheduled notes and rendered voices. **Chip ownership** shows which notes hold the three channels and shared generators. [Build and run the browser editor](../web/strudel/README.md)
 
 ### Installing on macOS
 

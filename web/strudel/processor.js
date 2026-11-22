@@ -3,7 +3,7 @@ const TRACE_WORDS = 74;
 const TRACE_BATCH_CAPACITY = 256;
 const TRACE_IN_FLIGHT_CAPACITY = 2;
 const ENGINE_FUNCTIONS = [
-    "uzx_init", "uzx_reset", "uzx_note_sound", "uzx_note_on", "uzx_note_off", "uzx_render",
+    "uzx_init", "uzx_reset", "uzx_note_sound", "uzx_sound_length", "uzx_note_on", "uzx_note_off", "uzx_render",
     "uzx_audio_left", "uzx_audio_right", "uzx_trace_data", "uzx_trace_count", "uzx_trace_clear",
 ];
 
@@ -12,6 +12,7 @@ class UZXChipProcessor extends AudioWorkletProcessor {
         super();
         this.wasmModule = options.processorOptions?.wasmModule;
         this.isYm = options.processorOptions?.isYm ? 1 : 0;
+        this.frameRate = 50;
         this.engine = null;
         this.memory = null;
         this.heapFloat = null;
@@ -55,15 +56,14 @@ class UZXChipProcessor extends AudioWorkletProcessor {
             this.initializeEngine();
             this.port.postMessage({type: "ready", sampleRate});
         } catch (error) {
-            this.failed = true;
-            this.port.postMessage({type: "error", message: String(error?.message ?? error)});
+            this.fail(String(error?.message ?? error));
         }
     }
 
     initializeEngine() {
         if (this.engine._initialize)
             this.engine._initialize();
-        if (!this.engine.uzx_init(sampleRate, this.isYm))
+        if (!this.engine.uzx_init(sampleRate, this.isYm, this.frameRate))
             throw new Error("WASM engine initialization failed");
         this.engineBaseFrame = this.nowFrame();
         this.port.postMessage({type: "initialized", sampleRate});
@@ -161,11 +161,20 @@ class UZXChipProcessor extends AudioWorkletProcessor {
         this.queueSize = 0;
     }
 
-    resetEngine(frame) {
+    /** A generation can bring a frame rate of its own. One that the engine refuses leaves the rate as it was. */
+    resetEngine(frame, frameRate = this.frameRate) {
         if (this.engine && !this.failed) {
-            this.engine.uzx_reset();
+            if (frameRate !== this.frameRate && this.engine.uzx_init(sampleRate, this.isYm, frameRate))
+                this.frameRate = frameRate;
+            else
+                this.engine.uzx_reset();
             this.engineBaseFrame = frame;
         }
+    }
+
+    fail(message) {
+        this.failed = true;
+        this.port.postMessage({type: "error", message});
     }
 
     apply(command, frame) {
@@ -175,7 +184,7 @@ class UZXChipProcessor extends AudioWorkletProcessor {
             const newGeneration = command.generation;
             const oldGeneration = this.activeGeneration;
             this.publishTrace(frame, true);
-            this.resetEngine(frame);
+            this.resetEngine(frame, command.frameRate);
             this.activeGeneration = newGeneration;
             if (oldGeneration !== null)
                 this.discardGeneration(oldGeneration);
@@ -187,8 +196,12 @@ class UZXChipProcessor extends AudioWorkletProcessor {
             return;
         if (command.gate) {
             // A gate without a sound plays the engine's default, a plain tone.
-            if (command.sound)
+            if (command.sound) {
+                // public/engine.wasm is built separately from the page, which wrote this record.
+                if (command.sound.length !== this.engine.uzx_sound_length())
+                    return this.fail("engine.wasm is out of date: its note record has another size. Rebuild the WASM engine.");
                 this.heapFloat.set(command.sound, (this.engine.uzx_note_sound() >>> 0) >>> 2);
+            }
             if (!this.engine.uzx_note_on(command.occurrence >>> 0, command.instrument >>> 0,
                 Number(command.pitch) || 0, Math.max(0, Math.min(1, Number(command.velocity) || 0))))
                 this.rejectedNotes++;

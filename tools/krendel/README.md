@@ -18,11 +18,11 @@ Experimental. Design: [docs/design/krendel-midi.md](../../docs/design/krendel-mi
    setcpm(30)
    const port = 'IAC Driver Bus 1'
    $: note("c4 eb4 g4 bb4").midichan(1).uzx(port)
-   $: note("<c2 g1>").midichan(3).aytone(0).ayenv(1).aybuzz(1).ayshape("<saw tri>").uzx(port)
-   $: note("c5*8").midichan(5).aytone(0).aynoise(1).aynoiseperiod("<2 8>").velocity(.6).uzx(port)
+   $: note("<c2 g1>").midichan(3).tone(0).envelope(1).envdrive(1).envshape("<saw tri>").uzx(port)
+   $: note("c5*8").midichan(5).tone(0).noise(1).noiseperiod("<2 8>").velocity(.6).uzx(port)
    ```
 
-The controls are in `controls` in `uzx.mjs` and in the design note.
+The controls are in `controls` in `uzx.mjs` and in the design note. `.T()`, `.N()` and `.E()` are short for `.tone()`, `.noise()` and `.envelope()`.
 
 ## Test
 

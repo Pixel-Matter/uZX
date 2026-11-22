@@ -5,11 +5,12 @@
 //   await import('<where this file is served>/uzx.mjs')
 //
 //   $: note("c4 eb4 g4 bb4").midichan(1).uzx('IAC Driver Bus 1')
-//   $: note("<c2 g1>").midichan(3).aytone(0).ayenv(1).aybuzz(1).ayshape("<saw tri>").uzx('IAC Driver Bus 1')
+//   $: note("<c2 g1>").midichan(3).tone(0).envelope(1).envdrive(1).envshape("<saw tri>").uzx('IAC Driver Bus 1')
 //
-// The controls are the controllers MIDI to PSG reads (`NoteCC` in src/plugins/uZX/midi_effects/NoteFrame.h),
-// prefixed with `ay` because Strudel already has `noise`, `shape`, `env` and `retrig`. Each is sent on the note's
-// MIDI channel just before the note.
+// The controls are the controllers MIDI to PSG reads (`NoteCC` in src/plugins/uZX/midi_effects/NoteFrame.h), under
+// Studio's names for them. `envelope` and `envshape` are longer because Strudel has its own `env` and `shape`, which
+// mean something else; `noise` and `pan` are Strudel's own controls. Each is sent on the note's MIDI channel just
+// before the note.
 //
 // Tested with @strudel/core 1.2.6, @strudel/mini 1.2.6 and @strudel/midi 1.3.0 (see package.json).
 
@@ -47,7 +48,7 @@ const toSwitch = (x) => (x === true || Number(x) >= 0.5 ? 127 : 0);
 function toShape(x) {
     const i = typeof x === 'string' && Number.isNaN(Number(x)) ? shapes.indexOf(x) : clampStep(x, shapes.length);
     if (i < 0) {
-        throw new Error(`ayshape: "${x}" is not one of ${shapes.join(', ')} or 0–7`);
+        throw new Error(`envshape: "${x}" is not one of ${shapes.join(', ')} or 0–7`);
     }
     return stepToController(i, shapes.length);
 }
@@ -58,14 +59,13 @@ const toController = (x) => Math.min(127, Math.max(0, Math.round(Number(x))));
 
 /** Each control: its controller, and how a Strudel value becomes the controller's value. */
 const controls = {
-    aytone: [cc.tone, toSwitch],           // 1 or 0
-    aynoise: [cc.noise, toSwitch],         // 1 or 0
-    ayenv: [cc.envelope, toSwitch],        // 1 or 0
-    aybuzz: [cc.envelopeDriver, toSwitch], // 1: the notes' pitch is the envelope's
-    ayretrig: [cc.envelopeRestart, toSwitch], // 1 restarts the envelope with the note
-    ayshape: [cc.envelopeShape, toShape],  // a name from `shapes`, or 0–7
-    aynoiseperiod: [cc.noisePeriod, toNoisePeriod], // 0 highest noise … 31 lowest
-    ayprio: [cc.priority, toController],   // 0–127
+    tone: [cc.tone, toSwitch],                    // 1 or 0
+    envelope: [cc.envelope, toSwitch],            // 1 or 0
+    envdrive: [cc.envelopeDriver, toSwitch],      // 1: the notes' pitch is the envelope's
+    envretrig: [cc.envelopeRestart, toSwitch],    // 1 restarts the envelope with the note
+    envshape: [cc.envelopeShape, toShape],        // a name from `shapes`, or 0–7
+    noiseperiod: [cc.noisePeriod, toNoisePeriod], // 0 highest noise … 31 lowest
+    prio: [cc.priority, toController],            // 0–127
 };
 
 const midimap = {};
@@ -82,8 +82,15 @@ for (const [name, [ccn, convert]] of Object.entries(controls)) {
     midimap[name] = { ccn, min: 0, max: 127 };
 }
 
-// Strudel's own pan, 0 left … 1 right, asks for the chip channel at that place in the AY chip's layout.
+// Strudel's own controls go as they are. `noise`, 1 or 0, switches the chip's noise; `pan`, 0 left … 1 right, asks
+// for the chip channel at that place in the AY chip's layout.
+midimap.noise = { ccn: cc.noise, min: 0, max: 1 };
 midimap.pan = { ccn: 10, min: 0, max: 1 };
+
+// A tracker's mask letters, as methods only: `.T(0).N(1)`. Lower case would take Strudel's `n`, the note number.
+for (const [letter, name] of [['T', 'tone'], ['N', 'noise'], ['E', 'envelope']]) {
+    Pattern.prototype[letter] = Pattern.prototype[name];
+}
 
 await midimaps({ uzx: midimap });
 

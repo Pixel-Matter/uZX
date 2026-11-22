@@ -23,23 +23,23 @@ The live input keeps every MIDI channel: `MidiInputDeviceNode` rewrites the chan
 
 **Prototype:** [`tools/krendel/uzx.mjs`](../../tools/krendel/uzx.mjs), with its tests and how to load it in [`tools/krendel/README.md`](../../tools/krendel/README.md). A plain ES module loaded in Strudel with `await import('<url>/uzx.mjs')`; no build step and no C++ change.
 
-It reads Strudel's `registerControl`, `midimaps`, `reify` and `Pattern` from `globalThis`, where the REPL puts every export of its packages before user code runs. It registers one control per controller MIDI to PSG reads and a midimap `uzx` that sends them as CC; `.uzx(port)` is `.midimap('uzx').midi(port)`. Strudel's `.midi()` sends a hap's mapped controllers before its note, on the hap's `midichan`, at the same Web MIDI timestamp.
+It reads Strudel's `registerControl`, `midimaps`, `reify` and `Pattern` from `globalThis`, where the REPL puts every export of its packages before user code runs. It registers a control for each controller MIDI to PSG reads that Strudel has no control for, and a midimap `uzx` that sends them as CC; `.uzx(port)` is `.midimap('uzx').midi(port)`. Strudel's `.midi()` sends a hap's mapped controllers before its note, on the hap's `midichan`, at the same Web MIDI timestamp.
 
 The numbers are `NoteCC` in `src/plugins/uZX/midi_effects/NoteFrame.h`; the module's test reads that header and fails when they differ. Values go through `stepToController` from the same header, so each lands in the band `controllerToStep` reads back.
 
 | Control | Controller | Value |
 | --- | --- | --- |
-| `aytone` | 80 | 1 or 0 |
-| `aynoise` | 81 | 1 or 0 |
-| `ayenv` | 82 | 1 or 0 |
-| `ayretrig` | 83 | 1 restarts the envelope |
-| `aybuzz` | 85 | 1: the notes drive the envelope |
-| `ayshape` | 70 | `tri`, `trifall`, `saw`, `sawfall`, `attack`, `decay`, `attackcut`, `decayhold`, or 0–7, in the user guide's order |
-| `aynoiseperiod` | 2 | 0 highest noise … 31 lowest |
-| `ayprio` | 86 | 0–127 |
+| `tone`, or `.T()` | 80 | 1 or 0 |
+| `noise` (Strudel's own), or `.N()` | 81 | 1 or 0 |
+| `envelope`, or `.E()` | 82 | 1 or 0 |
+| `envretrig` | 83 | 1 restarts the envelope |
+| `envdrive` | 85 | 1: the notes drive the envelope |
+| `envshape` | 70 | `tri`, `trifall`, `saw`, `sawfall`, `attack`, `decay`, `attackcut`, `decayhold`, or 0–7, in the user guide's order |
+| `noiseperiod` | 2 | 0 highest noise … 31 lowest |
+| `prio` | 86 | 0–127 |
 | `pan` (Strudel's own) | 10 | 0 left … 1 right: the chip channel at that place in the AY chip's layout |
 
-The `ay` prefix is needed: Strudel already has `noise`, `shape`, `env` and `retrig`, with other meanings. The module carries no state about the chip; Studio stays the one place that decides what sounds.
+The names are Studio's for the same switches. Registering a control replaces Strudel's own of that name for every pattern in the REPL, so `envelope` and `envshape` stay clear of Strudel's `env` and `shape`, which mean something else, and the module's test fails if a pinned Strudel release has one of the registered names. Strudel's `noise` is noise in the mix there too, so the module maps it without registering it. The letters are a tracker's mask, as methods only and in capitals: `.n()` is Strudel's note number. The module carries no state about the chip; Studio stays the one place that decides what sounds.
 
 Tested in Node with the npm releases pinned in `tools/krendel/package.json` (`@strudel/core` 1.2.6, `@strudel/mini` 1.2.6, `@strudel/midi` 1.3.0). Not yet played through Studio.
 
@@ -77,7 +77,7 @@ Continuous tempo following is out of scope.
 ## Order of work and acceptance
 
 1. **Guide.** A **Strudel** section in `docs/user-guide.md`: the virtual port per OS, enabling it in Audio Settings, routing it with **I**, monitoring on, a three-line example with raw `ccn`/`ccv`. This works today.
-2. **Module.** Prototype done, with Node tests. Accepted when an example with a bass on channel 1 and a three-note chord on channels 2–4 plays on one chip with the expected channel stealing, and `ayshape`/`ayretrig` change the envelope audibly.
+2. **Module.** Prototype done, with Node tests. Accepted when an example with a bass on channel 1 and a three-note chord on channels 2–4 plays on one chip with the expected channel stealing, and `envshape`/`envretrig` change the envelope audibly.
 3. **Clock, transport only.** `MidiClockFollower` with unit tests feeding message sequences (Start, ticks at 120 BPM, Stop, SPP) into it and checking the transport calls and measured tempo. Accepted when Strudel's Start/Stop starts and stops Studio at the edit start, and a recording of the live notes lands on the beats.
 4. **Clock, tempo on Start.** Only after step 3 is used in practice.
 

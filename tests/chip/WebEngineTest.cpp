@@ -60,10 +60,10 @@ void checkStereoAudio(const AudioStats& stats) {
     check(stats.stereoDifference, "panned chip output should differ between left and right");
 }
 
-void testBassAtRate(std::uint32_t sampleRate, std::uint32_t secondTick) {
-    check(uzx_init(sampleRate, 0) == 1, "AY engine should initialize at supported sample rate");
+void testBassAtRate(std::uint32_t sampleRate, std::uint32_t frameRate, std::uint32_t secondTick) {
+    check(uzx_init(sampleRate, 0, frameRate) == 1, "AY engine should initialize at supported rates");
     check(uzx_note_on(11, 0, 45.0f, 0.8f) == 1, "bass note should be accepted");
-    const auto stats = renderAndInspect(1024);
+    const auto stats = renderAndInspect(secondTick + 64);
     check(uzx_trace_count() == 2, "render should produce two note frames");
     const auto& first = trace(0);
     const auto& second = trace(1);
@@ -80,9 +80,9 @@ void testBassAtRate(std::uint32_t sampleRate, std::uint32_t secondTick) {
 MoTool::uZX::NoteSound pluck() {
     MoTool::uZX::NoteSound sound;
     sound.noise = 1.0f;
-    sound.noiseHold = 0.04f;
+    sound.noiseHold = 2.0f;
     sound.noisePeriod = 5.0f;
-    sound.decay = 0.14f;
+    sound.decay = 7.0f;
     sound.sustain = 0.0f;
     return sound;
 }
@@ -102,7 +102,7 @@ bool near(float a, float b) {
 }
 
 void testPluckTraceAndReset() {
-    check(uzx_init(48000, 0) == 1, "engine should initialize for pluck test");
+    check(uzx_init(48000, 0, 50) == 1, "engine should initialize for pluck test");
     *uzx_note_sound() = pluck();
     check(uzx_note_on(21, 1, 60.0f, 0.8f) == 1, "pluck note should be accepted");
     const auto stats = renderAndInspect(2048);
@@ -127,7 +127,7 @@ void testPluckTraceAndReset() {
 }
 
 void testSoundIsUsedOnce() {
-    check(uzx_init(48000, 0) == 1, "engine should initialize");
+    check(uzx_init(48000, 0, 50) == 1, "engine should initialize");
     uzx_note_sound()->noise = 1.0f;
     check(uzx_note_on(1, 0, 60.0f, 0.8f) == 1, "noisy note accepted");
     check(uzx_note_on(2, 0, 64.0f, 0.8f) == 1, "following note accepted");
@@ -139,12 +139,12 @@ void testSoundIsUsedOnce() {
 }
 
 void testLevelEnvelope() {
-    check(uzx_init(48000, 0) == 1, "engine should initialize");
+    check(uzx_init(48000, 0, 50) == 1, "engine should initialize");
     auto& sound = *uzx_note_sound();
-    sound.attack = 0.04f;   // 2 frames
-    sound.decay = 0.04f;    // 2 frames
+    sound.attack = 2.0f;
+    sound.decay = 2.0f;
     sound.sustain = 0.5f;
-    sound.release = 0.08f;  // 4 frames
+    sound.release = 4.0f;
     check(uzx_note_on(1, 0, 60.0f, 1.0f) == 1, "note accepted");
     constexpr float held[]{0.0f, 0.5f, 1.0f, 0.75f, 0.5f, 0.5f};
     for (const auto level : held)
@@ -156,22 +156,43 @@ void testLevelEnvelope() {
     check(renderFrames(1).count == 0, "the note ends when its release does");
 }
 
-void testWholeFrameTimes() {
-    check(uzx_init(48000, 0) == 1, "engine should initialize");
+void testTables() {
+    check(uzx_init(48000, 0, 50) == 1, "engine should initialize");
     auto& sound = *uzx_note_sound();
-    sound.noise = 1.0f;
-    sound.noiseHold = 0.3f;  // 15 frames: times 50, a float makes it a hair more
-    check(uzx_note_on(1, 0, 60.0f, 1.0f) == 1, "note accepted");
-    check(renderFrames(15).noise == 1, "the noise sounds through its fifteenth frame");
-    check(renderFrames(1).noise == 0, "a time of whole frames ends on the frame");
+    sound.levelSteps = 4.0f;
+    sound.levels = {1.0f, 0.6f, 0.2f, 0.0f};
+    sound.toneSteps = 2.0f;
+    sound.tones = {72.0f, 48.0f};
+    check(uzx_note_on(1, 0, 60.0f, 1.0f) == 1, "table note accepted");
+    constexpr float levels[]{1.0f, 0.6f, 0.2f};
+    constexpr float pitches[]{72.0f, 48.0f, 48.0f};
+    for (int i = 0; i < 3; ++i) {
+        const auto voice = renderFrames(1).voices[0];
+        check(near(voice.level, levels[i]) && near(voice.pitch, pitches[i]),
+              "each frame takes a table's next step, and the last tone holds");
+    }
+    check(renderFrames(1).count == 0, "a note whose level table ends at 0 ends there");
+
+    uzx_reset();
+    sound.levelSteps = 2.0f;
+    sound.levels = {1.0f, 0.5f};
+    sound.toneSteps = 1.0f;
+    sound.tonesArePeriods = 1.0f;
+    sound.tones = {424.0f};
+    check(uzx_note_on(1, 0, 60.0f, 1.0f) == 1, "period table note accepted");
+    renderFrames(2);
+    const auto held = renderFrames(1).voices[0];
+    const auto pitchOfPeriod = static_cast<float>(69.0 + 12.0 * std::log2(1773400.0 / 16.0 / 424.0 / 440.0));
+    check(near(held.level, 0.5f) && near(held.pitch, pitchOfPeriod),
+          "the last level holds, and a tone period sounds at its pitch");
 }
 
 void testPitchShaping() {
-    check(uzx_init(48000, 0) == 1, "engine should initialize");
+    check(uzx_init(48000, 0, 50) == 1, "engine should initialize");
     auto& sound = *uzx_note_sound();
     sound.ornamentLength = 3.0f;
     sound.ornament = {0.0f, 3.0f, 7.0f};
-    sound.ornamentStep = 0.04f;  // 2 frames
+    sound.ornamentStep = 2.0f;
     check(uzx_note_on(1, 0, 60.0f, 1.0f) == 1, "ornament note accepted");
     constexpr float ornament[]{60.0f, 60.0f, 63.0f, 63.0f, 67.0f, 67.0f, 60.0f};
     for (const auto pitch : ornament)
@@ -179,16 +200,16 @@ void testPitchShaping() {
 
     uzx_reset();
     sound.pitchPeak = 12.0f;
-    sound.pitchDecay = 0.08f;  // 4 frames
+    sound.pitchDecay = 4.0f;
     check(uzx_note_on(1, 0, 60.0f, 1.0f) == 1, "pitch envelope note accepted");
     constexpr float falling[]{72.0f, 69.0f, 66.0f, 63.0f, 60.0f};
     for (const auto pitch : falling)
         check(near(renderFrames(1).voices[0].pitch, pitch), "the pitch falls from the peak to the note");
 
     uzx_reset();
-    sound.vibratoRate = 12.5f;  // a quarter turn per frame
+    sound.vibratoRate = 0.25f;
     sound.vibratoDepth = 0.5f;
-    sound.vibratoDelay = 0.04f;
+    sound.vibratoDelay = 2.0f;
     check(uzx_note_on(1, 0, 60.0f, 1.0f) == 1, "vibrato note accepted");
     constexpr float vibrato[]{60.0f, 60.0f, 60.0f, 60.5f, 60.0f, 59.5f};
     for (const auto pitch : vibrato)
@@ -196,7 +217,7 @@ void testPitchShaping() {
 }
 
 void testEnvelopeDriverTakesNoChannel() {
-    check(uzx_init(48000, 0) == 1, "engine should initialize");
+    check(uzx_init(48000, 0, 50) == 1, "engine should initialize");
     auto& sound = *uzx_note_sound();
     sound.tone = 0.0f;
     sound.drivesEnvelope = 1.0f;
@@ -213,7 +234,7 @@ void testEnvelopeDriverTakesNoChannel() {
 }
 
 void testNoteOffAndShortGate() {
-    check(uzx_init(44100, 1) == 1, "YM engine should initialize");
+    check(uzx_init(44100, 1, 50) == 1, "YM engine should initialize");
     check(uzx_note_on(31, 0, 48.0f, 0.7f) == 1, "short bass gate should be accepted");
     uzx_note_off(31);
     const auto firstBlock = renderAndInspect(128);
@@ -233,7 +254,7 @@ void testNoteOffAndShortGate() {
 }
 
 void testRejectedNotesAndTraceOwnership() {
-    check(uzx_init(48000, 0) == 1, "engine should initialize for ownership test");
+    check(uzx_init(48000, 0, 50) == 1, "engine should initialize for ownership test");
     check(uzx_note_on(41, 0, 50.0f, 0.9f) == 1, "bass note accepted");
     *uzx_note_sound() = pluck();
     check(uzx_note_on(42, 1, 67.0f, 0.8f) == 1, "pluck note accepted");
@@ -255,12 +276,14 @@ void testRejectedNotesAndTraceOwnership() {
 }  // namespace
 
 int main() {
-    testBassAtRate(44100, 882);
-    testBassAtRate(48000, 960);
+    testBassAtRate(44100, 50, 882);
+    testBassAtRate(48000, 50, 960);
+    testBassAtRate(48000, 100, 480);
+    check(uzx_init(48000, 0, 0) == 0 && uzx_init(48000, 0, 1001) == 0, "a frame rate out of range is refused");
     testPluckTraceAndReset();
     testSoundIsUsedOnce();
     testLevelEnvelope();
-    testWholeFrameTimes();
+    testTables();
     testPitchShaping();
     testEnvelopeDriverTakesNoChannel();
     testNoteOffAndShortGate();

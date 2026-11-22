@@ -194,7 +194,7 @@ test("a stalled display drops trace batches while audio continues", () => {
 
 test("a gate's sound reaches the engine, and the next gate without one is a plain tone", () => {
     const processor = makeProcessor();
-    const sound = noteSound({aynoise: 1, pan: 1}, {pitch: 60, cps: 0.5});
+    const sound = noteSound({noise: 1, pan: 1}, {pitch: 60, fps: 50});
     commands(processor, [
         {frame: 0, generation: 1, gate: true, occurrence: 7, instrument: 0, pitch: 60, velocity: 0.8, sound},
         {frame: 0, generation: 1, gate: true, occurrence: 8, instrument: 0, pitch: 64, velocity: 0.8},
@@ -208,18 +208,41 @@ test("a gate's sound reaches the engine, and the next gate without one is a plai
     assert.deepEqual([a, b, c, noise], [8, 0, 7, 7], "the noisy note takes the right channel and the noise");
 });
 
+test("a generation brings its frame rate, and a sound of another size than the engine's is refused", () => {
+    const processor = makeProcessor();
+    commands(processor, [
+        {frame: 0, generation: 1, switch: true, frameRate: 100},
+        {frame: 0, generation: 1, gate: true, occurrence: 1, instrument: 0, pitch: 60, velocity: 1,
+            sound: noteSound({decay: 0.03}, {pitch: 60, fps: 100})},
+    ]);
+    processRange(processor, 0, 2048);
+    commands(processor, [{frame: 2048, generation: 2, switch: true}]);
+    processRange(processor, 2048, 2560);
+    const frames = traceRecords(traceMessages(processor, 1));
+    assert.deepEqual(frames.map(record => [Number(record.sample), record.count]),
+        [[0, 1], [480, 1], [960, 1], [1440, 0], [1920, 0]], "a frame is 480 samples, and the decay lasts three");
+
+    commands(processor, [{
+        frame: 2560, generation: 2, gate: true, occurrence: 2, instrument: 0, pitch: 60, velocity: 1,
+        sound: new Float32Array(39),
+    }]);
+    processBlock(processor, 2560);
+    const error = processor.port.messages.find(message => message.type === "error");
+    assert.match(error.message, /engine\.wasm is out of date: its note record has another size/);
+});
+
 test("a kick takes the channel it asks for from the lowest priority and gives it back", () => {
     const processor = makeProcessor();
-    const instruments = {kick: {note: "e2", decay: 0.12, ayprio: 2}};
+    const instruments = {kick: {note: "e2", decay: 0.12, prio: 2}};
     const gate = (occurrence, value, pitch) => {
         const {instrument, controls} = withInstrument(value, instruments);
-        const sound = noteSound(controls, {pitch, cps: 0.5});
+        const sound = noteSound(controls, {pitch, fps: 50});
         return {frame: 0, generation: 1, gate: true, occurrence, instrument, pitch, velocity: 0.8, sound};
     };
     commands(processor, [
         gate(1, {pan: 0.5}, 35),
-        gate(2, {pan: 0, ayprio: 1}, 59),
-        gate(3, {pan: 1, ayprio: 1}, 66),
+        gate(2, {pan: 0, prio: 1}, 59),
+        gate(3, {pan: 1, prio: 1}, 66),
         gate(4, {s: "kick", pan: 0.5}, 40),
     ]);
     processRange(processor, 0, 9600);

@@ -26,8 +26,8 @@ constexpr std::size_t MAX_TRACE_SNAPSHOTS = 32;
 constexpr double CHIP_CLOCK = 1773400.0;
 constexpr double OUTPUT_GAIN = 0.25;
 constexpr std::array CHANNEL_PANS{0.15, 0.5, 0.85};
-constexpr std::uint32_t FRAME_RATE = 50;
-constexpr float MAX_SECONDS = 600.0f;
+constexpr std::uint32_t MAX_FRAME_RATE = 1000;
+constexpr float MAX_FRAMES = 1.0e6f;
 
 struct Gate
 {
@@ -51,20 +51,28 @@ bool isOn(float value) noexcept {
     return value >= 0.5f;
 }
 
-/** A time in frames. Anything that is not a positive time is 0. A time within a thousandth of a frame of a whole
-    frame is that frame: 15/50 s as a float is a hair more than 15 frames, and would last 16. */
-float framesIn(float seconds) noexcept {
-    if (!(seconds > 0.0f))
-        return 0.0f;
-    const auto frames = std::min(seconds, MAX_SECONDS) * static_cast<float>(FRAME_RATE);
-    const auto whole = std::nearbyint(frames);
-    return std::abs(frames - whole) < 0.001f ? whole : frames;
+/** A time in frames. Anything that is not a positive time is 0. */
+float duration(float frames) noexcept {
+    return frames > 0.0f ? std::min(frames, MAX_FRAMES) : 0.0f;
 }
 
-/** The level while the gate is open: attack, decay, sustain. */
+/** How many steps of a table are in use. */
+std::size_t stepsOf(float count, std::size_t capacity) noexcept {
+    return static_cast<std::size_t>(std::clamp(count, 0.0f, static_cast<float>(capacity)));
+}
+
+/** A table's value at a frame: its last value holds. `steps` is not 0. */
+template <std::size_t Capacity>
+float tableAt(const std::array<float, Capacity>& table, std::size_t steps, float age) noexcept {
+    return table[std::min(static_cast<std::size_t>(age), steps - 1)];
+}
+
+/** The level while the gate is open: the level table, or attack, decay and sustain. */
 float heldLevel(const NoteSound& sound, float age) noexcept {
-    const auto attack = framesIn(sound.attack);
-    const auto decay = framesIn(sound.decay);
+    if (const auto steps = stepsOf(sound.levelSteps, sound.levels.size()))
+        return std::clamp(tableAt(sound.levels, steps, age), 0.0f, 1.0f);
+    const auto attack = duration(sound.attack);
+    const auto decay = duration(sound.decay);
     const auto sustain = std::clamp(sound.sustain, 0.0f, 1.0f);
     if (age < attack)
         return age / attack;
@@ -78,7 +86,7 @@ float levelOf(const Gate& gate) noexcept {
     if (!gate.releasedAt)
         return heldLevel(gate.sound, age);
     const auto releasedAt = static_cast<float>(*gate.releasedAt);
-    const auto release = framesIn(gate.sound.release);
+    const auto release = duration(gate.sound.release);
     // Without a release the gate sounds only if it closed before its first frame, and then at the held level.
     const auto remaining = release > 0.0f ? std::max(0.0f, 1.0f - (age - releasedAt) / release) : 1.0f;
     return heldLevel(gate.sound, releasedAt) * remaining;
@@ -89,9 +97,13 @@ bool hasEnded(const Gate& gate) noexcept {
     if (gate.age == 0)
         return false;
     const auto age = static_cast<float>(gate.age);
+    const auto& sound = gate.sound;
     if (gate.releasedAt)
-        return age - static_cast<float>(*gate.releasedAt) >= framesIn(gate.sound.release);
-    return gate.sound.sustain <= 0.0f && age >= framesIn(gate.sound.attack) + framesIn(gate.sound.decay);
+        return age - static_cast<float>(*gate.releasedAt) >= duration(sound.release);
+    // A note that has fallen to silence for good ends, and frees its channel.
+    if (const auto steps = stepsOf(sound.levelSteps, sound.levels.size()))
+        return sound.levels[steps - 1] <= 0.0f && gate.age >= steps - 1;
+    return sound.sustain <= 0.0f && age >= duration(sound.attack) + duration(sound.decay);
 }
 
 /** Ornament, pitch envelope and vibrato, in semitones from the note's own pitch. */
@@ -100,25 +112,40 @@ float pitchOffsetOf(const Gate& gate) noexcept {
     const auto age = static_cast<float>(gate.age);
     auto offset = 0.0f;
 
-    const auto steps = static_cast<std::size_t>(std::clamp(sound.ornamentLength, 0.0f, float(sound.ornament.size())));
-    if (steps > 0) {
-        const auto step = std::max(1.0f, framesIn(sound.ornamentStep));
+    if (const auto steps = stepsOf(sound.ornamentLength, sound.ornament.size())) {
+        const auto step = std::max(1.0f, duration(sound.ornamentStep));
         offset += sound.ornament[static_cast<std::size_t>(age / step) % steps];
     }
 
-    const auto attack = framesIn(sound.pitchAttack);
-    const auto decay = framesIn(sound.pitchDecay);
+    const auto attack = duration(sound.pitchAttack);
+    const auto decay = duration(sound.pitchDecay);
     if (age < attack)
         offset += sound.pitchStart + (sound.pitchPeak - sound.pitchStart) * age / attack;
     else if (age < attack + decay)
         offset += sound.pitchPeak * (1.0f - (age - attack) / decay);
 
-    const auto delay = framesIn(sound.vibratoDelay);
+    const auto delay = duration(sound.vibratoDelay);
     if (sound.vibratoRate > 0.0f && age >= delay) {
         constexpr auto turn = 6.28318530717958647692f;
-        offset += sound.vibratoDepth * std::sin(turn * sound.vibratoRate * (age - delay) / float(FRAME_RATE));
+        offset += sound.vibratoDepth * std::sin(turn * sound.vibratoRate * (age - delay));
     }
     return std::isfinite(offset) ? offset : 0.0f;
+}
+
+/** The pitch on the MIDI note scale at which the chip's tone has this period. */
+float pitchOfTonePeriod(float period) noexcept {
+    const auto frequency = CHIP_CLOCK / 16.0 / std::clamp(static_cast<double>(period), 1.0, 4095.0);
+    return static_cast<float>(69.0 + 12.0 * std::log2(frequency / 440.0));
+}
+
+/** The note's pitch before ornament, pitch envelope and vibrato: this frame of the tone table, or the note's own. */
+float basePitchOf(const Gate& gate) noexcept {
+    const auto& sound = gate.sound;
+    const auto steps = stepsOf(sound.toneSteps, sound.tones.size());
+    if (steps == 0)
+        return gate.pitch;
+    const auto tone = tableAt(sound.tones, steps, static_cast<float>(gate.age));
+    return isOn(sound.tonesArePeriods) ? pitchOfTonePeriod(tone) : tone;
 }
 
 int periodFor(double pitch, PsgPeriodMode mode) noexcept {
@@ -134,11 +161,13 @@ int periodFor(double pitch, PsgPeriodMode mode) noexcept {
 class Engine
 {
 public:
-    bool init(std::uint32_t sampleRate, int isYm) noexcept {
-        if (sampleRate < 8000 || sampleRate > 384000 || (isYm != 0 && isYm != 1))
+    bool init(std::uint32_t sampleRate, int isYm, std::uint32_t frameRate) noexcept {
+        if (sampleRate < 8000 || sampleRate > 384000 || (isYm != 0 && isYm != 1)
+            || frameRate < 1 || frameRate > MAX_FRAME_RATE)
             return false;
         sampleRate_ = sampleRate;
         isYm_ = isYm;
+        frameRate_ = frameRate;
         reset();
         return true;
     }
@@ -149,7 +178,7 @@ public:
         allocator_ = {};
         allocator_.setChannelPans(CHANNEL_PANS);
         writer_.reset();
-        clock_ = NoteFrameClock{sampleRate_, FRAME_RATE};
+        clock_ = NoteFrameClock{sampleRate_, frameRate_};
         nextSound = {};
         sample_ = 0;
         traceCount = 0;
@@ -276,14 +305,14 @@ private:
         NoteVoice voice;
         voice.channel = gate.slot + 1;
         voice.key = static_cast<std::int32_t>(gate.id);
-        voice.pitch = std::clamp(gate.pitch + pitchOffsetOf(gate), 0.0f, 127.0f);
+        voice.pitch = std::clamp(basePitchOf(gate) + pitchOffsetOf(gate), 0.0f, 127.0f);
         voice.level = gate.velocity * levelOf(gate);
         voice.attack = gate.age == 0;
         voice.priority = static_cast<int>(std::clamp(sound.priority, 0.0f, 127.0f));
         if (sound.pan >= 0.0f)
             voice.pan = std::min(sound.pan, 1.0f);
 
-        const auto noiseHold = framesIn(sound.noiseHold);
+        const auto noiseHold = duration(sound.noiseHold);
         voice.timbre.tone = isOn(sound.tone);
         voice.timbre.noise = isOn(sound.noise) && (noiseHold <= 0.0f || static_cast<float>(gate.age) < noiseHold);
         voice.timbre.noisePeriod = static_cast<int>(std::clamp(sound.noisePeriod, 0.0f, 31.0f));
@@ -318,6 +347,7 @@ private:
 
     std::uint32_t sampleRate_ = 0;
     int isYm_ = 0;
+    std::uint32_t frameRate_ = 50;
     std::uint64_t sample_ = 0;
     NoteFrameClock clock_{0};
     std::array<Gate, NoteFrame::maxVoices> gates_{};
@@ -338,8 +368,8 @@ using MoTool::uZX::engine;
 
 extern "C" {
 
-int uzx_init(std::uint32_t sampleRate, int isYm) noexcept {
-    return engine.init(sampleRate, isYm);
+int uzx_init(std::uint32_t sampleRate, int isYm, std::uint32_t frameRate) noexcept {
+    return engine.init(sampleRate, isYm, frameRate);
 }
 
 void uzx_reset() noexcept {
@@ -348,6 +378,10 @@ void uzx_reset() noexcept {
 
 MoTool::uZX::NoteSound* uzx_note_sound() noexcept {
     return &engine.nextSound;
+}
+
+std::uint32_t uzx_sound_length() noexcept {
+    return static_cast<std::uint32_t>(sizeof(MoTool::uZX::NoteSound) / sizeof(float));
 }
 
 int uzx_note_on(std::uint32_t id, std::uint32_t instrument, float pitch, float velocity) noexcept {

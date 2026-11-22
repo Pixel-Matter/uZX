@@ -11,7 +11,9 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 
 - Play and live-edit Strudel patterns on one AY/YM chip, with a scrolling piano roll and channel, noise and envelope ownership.
 - Controls shape a note: tone, noise and the chip's envelope, level and pitch envelopes, vibrato, the channel, and an ornament in scale steps. `.scale()` and Strudel's other tonal functions work.
-- A pattern defines its instruments, drums included: `instrument("hat", note("c6").aynoise(1).decay(.04))`, then `s("kick hat")`.
+- A pattern defines its instruments, drums included: `instrument("hat", note("c6").noise(1).decay(.04))`, then `s("kick hat")`.
+- A tracker's sample plays frame by frame: `vols` is a table of the volume, `periods` or `freqs` of the tone.
+- `setfps(50)` sets how many times a second the chip's sound changes, and `setfpb(24)` the tempo as the frames in a beat, so that notes start on frames.
 - Play and Stop are one button, and Strudel's keys work anywhere on the page: `Ctrl+Enter` plays or re-evaluates, `Ctrl+.` stops.
 
 ### Download

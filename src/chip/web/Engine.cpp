@@ -28,6 +28,7 @@ constexpr double OUTPUT_GAIN = 0.25;
 constexpr std::array CHANNEL_PANS{0.15, 0.5, 0.85};
 constexpr std::uint32_t MAX_FRAME_RATE = 1000;
 constexpr float MAX_FRAMES = 1.0e6f;
+constexpr auto TURN = 6.28318530717958647692f;  // a circle, for a sine's angle
 
 struct Gate
 {
@@ -81,15 +82,24 @@ float heldLevel(const NoteSound& sound, float age) noexcept {
     return sustain;
 }
 
+/** The share of the level that the tremolo leaves: all of it as the note starts, then down by the depth and back. */
+float tremoloAt(const NoteSound& sound, float age) noexcept {
+    if (!(sound.tremoloRate > 0.0f))
+        return 1.0f;
+    const auto depth = std::clamp(sound.tremoloDepth, 0.0f, 1.0f);
+    return 1.0f - depth * (0.5f - 0.5f * std::cos(TURN * sound.tremoloRate * age));
+}
+
 float levelOf(const Gate& gate) noexcept {
     const auto age = static_cast<float>(gate.age);
+    const auto tremolo = tremoloAt(gate.sound, age);
     if (!gate.releasedAt)
-        return heldLevel(gate.sound, age);
+        return heldLevel(gate.sound, age) * tremolo;
     const auto releasedAt = static_cast<float>(*gate.releasedAt);
     const auto release = duration(gate.sound.release);
     // Without a release the gate sounds only if it closed before its first frame, and then at the held level.
     const auto remaining = release > 0.0f ? std::max(0.0f, 1.0f - (age - releasedAt) / release) : 1.0f;
-    return heldLevel(gate.sound, releasedAt) * remaining;
+    return heldLevel(gate.sound, releasedAt) * remaining * tremolo;
 }
 
 /** The first frame always sounds, so a gate shorter than a frame is heard. */
@@ -104,6 +114,12 @@ bool hasEnded(const Gate& gate) noexcept {
     if (const auto steps = stepsOf(sound.levelSteps, sound.levels.size()))
         return sound.levels[steps - 1] <= 0.0f && gate.age >= steps - 1;
     return sound.sustain <= 0.0f && age >= duration(sound.attack) + duration(sound.decay);
+}
+
+/** A sine of `depth` each way, at 0 and rising `delay` frames into the note. `rate` is in cycles a frame. */
+float sineAt(float rate, float depth, float delay, float age) noexcept {
+    const auto start = duration(delay);
+    return rate > 0.0f && age >= start ? depth * std::sin(TURN * rate * (age - start)) : 0.0f;
 }
 
 /** Ornament, pitch envelope and vibrato, in semitones from the note's own pitch. */
@@ -124,11 +140,7 @@ float pitchOffsetOf(const Gate& gate) noexcept {
     else if (age < attack + decay)
         offset += sound.pitchPeak * (1.0f - (age - attack) / decay);
 
-    const auto delay = duration(sound.vibratoDelay);
-    if (sound.vibratoRate > 0.0f && age >= delay) {
-        constexpr auto turn = 6.28318530717958647692f;
-        offset += sound.vibratoDepth * std::sin(turn * sound.vibratoRate * (age - delay));
-    }
+    offset += sineAt(sound.vibratoRate, sound.vibratoDepth, sound.vibratoDelay, age);
     return std::isfinite(offset) ? offset : 0.0f;
 }
 
@@ -315,7 +327,7 @@ private:
         const auto noiseHold = duration(sound.noiseHold);
         voice.timbre.tone = isOn(sound.tone);
         voice.timbre.noise = isOn(sound.noise) && (noiseHold <= 0.0f || static_cast<float>(gate.age) < noiseHold);
-        voice.timbre.noisePeriod = static_cast<int>(std::clamp(sound.noisePeriod, 0.0f, 31.0f));
+        voice.timbre.noisePeriod = noisePeriodAt(sound, gate.age);
         voice.timbre.envelope = isOn(sound.envelope);
         voice.timbre.drivesEnvelope = isOn(sound.drivesEnvelope);
         voice.timbre.envelopeShape = static_cast<EnvelopeShapeEnum::Enum>(std::clamp(sound.envelopeShape, 0.0f, 7.0f));
@@ -361,6 +373,17 @@ private:
 Engine engine;
 
 }  // namespace
+
+int noisePeriodAt(const NoteSound& sound, std::uint32_t age) noexcept {
+    const auto period = std::clamp(sound.noisePeriod, 0.0f, 31.0f);
+    if (!(sound.noiseVibratoRate > 0.0f))
+        return static_cast<int>(period);
+    const auto semitones =
+        sineAt(sound.noiseVibratoRate, sound.noiseVibratoDepth, sound.noiseVibratoDelay, static_cast<float>(age));
+    // A semitone up shortens the period by the twelfth root of two. The chip plays period 0 as 1.
+    const auto moved = std::max(period, 1.0f) * std::exp2(-semitones / 12.0f);
+    return static_cast<int>(std::clamp(std::nearbyint(moved), 1.0f, 31.0f));
+}
 
 }  // namespace MoTool::uZX
 

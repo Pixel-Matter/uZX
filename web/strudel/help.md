@@ -39,6 +39,7 @@ instrument("kick", note("c2").periods("512:768:1024:1152:1152:1280:1408:1536:166
 | `envretrig` | 1: the note restarts the envelope it drives |
 | `noiseperiod` | 0 highest noise … 31 lowest |
 | `noisehold` | The noise sounds only this long from the note's start |
+| `noisevib`, `noisevibmod`, `noisevibdelay` | A vibrato of the noise's pitch: its rate in Hz, its depth in semitones each way from `noiseperiod` (12 unless set, which halves and doubles the period), and the time before it starts |
 | `prio` | Who plays when the chip has too few channels: the higher, then the later. 0 to 127; 0 unless set |
 | `pan` | The channel: 0 is A, 0.5 is B, 1 is C |
 | `gain`, `velocity` | The volume, 1 unless set: full, the chip's 15 |
@@ -47,6 +48,7 @@ instrument("kick", note("c2").periods("512:768:1024:1152:1152:1280:1408:1536:166
 | `periods`, `freqs` | A table of the tone's period, 9–4095, or of its frequency in Hz, instead of the note's pitch. At most 64 steps |
 | `penv`, `pattack`, `pdecay` | The pitch, in semitones. With `pdecay` the note starts `penv` away and comes back; with `pattack` alone it arrives from `penv` below |
 | `vib`, `vibmod`, `vibdelay` | Vibrato rate in Hz, depth in semitones (0.5 unless set), and the time before it starts |
+| `tremolo`, `tremolodepth` | Tremolo, as in Strudel: its rate in Hz, and the share of the volume it takes away at its lowest, 0–1 (1 unless set). The chip's envelope, when it shapes the level, ignores it |
 | `orn`, `ornstep` | Pitch offsets that loop inside one note, as `orn("0:2:4")`, each lasting `ornstep` seconds, or one frame without it. At most 16 steps |
 
 The ornament keeps the note's level envelope running, where a pattern of separate notes would restart it. After `.scale()` its offsets are scale steps from the note, so `n("0 2").scale("B3:minor").orn("0:2:4")` plays a minor triad on B and a major one on D. Without a scale they are semitones.

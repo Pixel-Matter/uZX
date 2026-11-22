@@ -216,6 +216,31 @@ void testPitchShaping() {
         check(near(renderFrames(1).voices[0].pitch, pitch), "the vibrato starts after its delay");
 }
 
+void testTremoloAndNoiseVibrato() {
+    check(uzx_init(48000, 0, 50) == 1, "engine should initialize");
+    auto& sound = *uzx_note_sound();
+    sound.tremoloRate = 0.25f;
+    sound.tremoloDepth = 0.5f;
+    check(uzx_note_on(1, 0, 60.0f, 1.0f) == 1, "tremolo note accepted");
+    constexpr float levels[]{1.0f, 0.75f, 0.5f, 0.75f, 1.0f};
+    for (const auto level : levels)
+        check(near(renderFrames(1).voices[0].level, level), "the tremolo takes the level down by its depth and back");
+
+    MoTool::uZX::NoteSound noise;
+    noise.noisePeriod = 8.0f;
+    check(noisePeriodAt(noise, 1) == 8, "without a vibrato the noise period is the note's");
+    noise.noiseVibratoRate = 0.25f;
+    noise.noiseVibratoDepth = 12.0f;
+    constexpr int octaveEachWay[]{8, 4, 8, 16, 8};
+    for (std::uint32_t age = 0; age < 5; ++age)
+        check(noisePeriodAt(noise, age) == octaveEachWay[age], "an octave up halves the noise period, down doubles it");
+    noise.noiseVibratoDelay = 2.0f;
+    check(noisePeriodAt(noise, 1) == 8 && noisePeriodAt(noise, 3) == 4, "the noise's vibrato starts after its delay");
+    noise.noiseVibratoDelay = 0.0f;
+    noise.noiseVibratoDepth = 36.0f;
+    check(noisePeriodAt(noise, 1) == 1 && noisePeriodAt(noise, 3) == 31, "the period stays within the chip's 1 to 31");
+}
+
 void testEnvelopeDriverTakesNoChannel() {
     check(uzx_init(48000, 0, 50) == 1, "engine should initialize");
     auto& sound = *uzx_note_sound();
@@ -285,6 +310,7 @@ int main() {
     testLevelEnvelope();
     testTables();
     testPitchShaping();
+    testTremoloAndNoiseVibrato();
     testEnvelopeDriverTakesNoChannel();
     testNoteOffAndShortGate();
     testRejectedNotesAndTraceOwnership();

@@ -1,11 +1,11 @@
 import { Interval, Scale } from '@tonaljs/tonal'
 
-/** The engine's NoteSound record (src/chip/web/Engine.h): 26 floats, then the ornament's offsets and the level
+/** The engine's NoteSound record (src/chip/web/Engine.h): 31 floats, then the ornament's offsets and the level
     and tone tables. The worklet checks the length against the engine's. */
-export const soundLength = 170
+export const soundLength = 175
 const maxOrnamentSteps = 16
 const maxTableSteps = 64
-const ornamentAt = 26
+const ornamentAt = 31
 const levelsAt = ornamentAt + maxOrnamentSteps
 const tonesAt = levelsAt + maxTableSteps
 
@@ -111,6 +111,11 @@ export function noteSound(v, { pitch, scale, fps }) {
         number(v.vib, 0) / fps,
         number(v.vibmod, 0.5),
         frames(v.vibdelay),
+        number(v.noisevib, 0) / fps,
+        number(v.noisevibmod, 12), // an octave each way
+        frames(v.noisevibdelay),
+        number(v.tremolo, 0) / fps,
+        number(v.tremolodepth, 1), // down to silence, as in Strudel
         frames(v.ornstep), // without it each step lasts one frame
         ornament.length,
         levels.length,

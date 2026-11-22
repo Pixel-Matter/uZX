@@ -3,7 +3,7 @@ import { Pattern, registerControl } from '@strudel/core'
 // The chip's switches have Studio's names for them, as tools/krendel/uzx.mjs does. `envelope` and `envshape` are
 // longer because Strudel has its own `env` and `shape`, which mean something else.
 // The rest of a note's sound uses Strudel's controls: noise, attack, decay, sustain, release, penv, pattack,
-// pdecay, vib, vibmod and pan. sound.js reads them all.
+// pdecay, vib, vibmod, tremolo, tremolodepth and pan. sound.js reads them all.
 const names = [
     'tone',         // 1 or 0: the square wave
     'envelope',     // 1 or 0: the chip's envelope shapes the level
@@ -12,6 +12,9 @@ const names = [
     'envshape',     // an envelope shape name, or 0–7
     'noiseperiod',  // 0 highest noise … 31 lowest
     'noisehold',    // seconds of noise from the note's start
+    'noisevib',     // Hz: a vibrato of the noise's pitch
+    'noisevibmod',  // its depth in semitones each way from noiseperiod
+    'noisevibdelay', // seconds before it starts
     'prio',         // who plays when the chip has too few channels
     'vibdelay',     // seconds before the vibrato starts
     'orn',          // pitch offsets that loop inside the note, as "0:2:4"

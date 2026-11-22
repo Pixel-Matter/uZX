@@ -67,6 +67,13 @@ struct NoteSound
     float vibratoDepth = 0.0f;  ///< semitones each way
     float vibratoDelay = 0.0f;  ///< the vibrato starts this long after the note
 
+    float noiseVibratoRate = 0.0f;   ///< cycles in a frame; 0 for none
+    float noiseVibratoDepth = 0.0f;  ///< semitones each way from the noise period: 12 up halves the period
+    float noiseVibratoDelay = 0.0f;  ///< the noise's vibrato starts this long after the note
+
+    float tremoloRate = 0.0f;   ///< cycles in a frame; 0 for none
+    float tremoloDepth = 0.0f;  ///< 0..1: the share of the level that the tremolo takes away at its lowest
+
     float ornamentStep = 0.0f;    ///< how long each ornament offset lasts; one frame at least
     float ornamentLength = 0.0f;  ///< how many offsets loop; 0 for none
 
@@ -80,7 +87,10 @@ struct NoteSound
     std::array<float, maxTableSteps> tones{};        ///< the pitch on the MIDI note scale, or the tone period
 };
 
-static_assert(sizeof(NoteSound) == 170 * sizeof(float) && offsetof(NoteSound, ornament) == 26 * sizeof(float));
+static_assert(sizeof(NoteSound) == 175 * sizeof(float) && offsetof(NoteSound, ornament) == 31 * sizeof(float));
+
+/** The chip's noise period for a note of this sound that is `age` frames old: its own, moved by its vibrato. */
+int noisePeriodAt(const NoteSound& sound, std::uint32_t age) noexcept;
 
 }  // namespace MoTool::uZX
 

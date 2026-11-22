@@ -12,7 +12,8 @@ const instruments = {
 const fields = [
     "tone", "noise", "envelope", "drivesEnvelope", "restartEnvelope", "envelopeShape", "noisePeriod", "noiseHold",
     "priority", "pan", "attack", "decay", "sustain", "release", "pitchStart", "pitchPeak", "pitchAttack", "pitchDecay",
-    "vibratoRate", "vibratoDepth", "vibratoDelay", "ornamentStep", "ornamentLength",
+    "vibratoRate", "vibratoDepth", "vibratoDelay", "noiseVibratoRate", "noiseVibratoDepth", "noiseVibratoDelay",
+    "tremoloRate", "tremoloDepth", "ornamentStep", "ornamentLength",
     "levelSteps", "toneSteps", "tonesArePeriods",
 ];
 const levelsAt = fields.length + 16;
@@ -84,6 +85,16 @@ test("the pitch envelope reads as Strudel's penv", () => {
 test("vibrato has Strudel's default depth and its own delay", () => {
     const sound = read({vib: 6, vibdelay: 0.15});
     assert.deepEqual([sound.vibratoRate, sound.vibratoDepth, sound.vibratoDelay], [0.12, 0.5, 7.5]);
+});
+
+test("the noise's vibrato and the tremolo have rates in Hz and a full depth unless one is set", () => {
+    const sound = read({noisevib: 5, noisevibdelay: 0.1, tremolo: 10});
+    assert.deepEqual([sound.noiseVibratoRate, sound.noiseVibratoDepth, sound.noiseVibratoDelay], [0.1, 12, 5]);
+    assert.deepEqual([sound.tremoloRate, sound.tremoloDepth], [0.2, 1]);
+    const set = read({noisevib: 5, noisevibmod: 7, tremolo: 10, tremolodepth: 0.4});
+    assert.deepEqual([set.noiseVibratoDepth, set.tremoloDepth], [7, 0.4]);
+    const none = read({});
+    assert.deepEqual([none.noiseVibratoRate, none.tremoloRate], [0, 0]);
 });
 
 test("times in seconds become frames at the pattern's frame rate", () => {

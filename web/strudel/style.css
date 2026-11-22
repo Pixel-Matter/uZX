@@ -32,20 +32,6 @@ header {
     font-size: 0.8rem;
 }
 h1 { display: flex; align-items: center; gap: 8px; margin-right: 8px; font-size: 1.1rem; letter-spacing: -0.03em; }
-.brand-mark {
-    width: 26px;
-    height: 26px;
-    border: 1px solid #3f604b;
-    border-radius: 7px;
-    background: #27392d;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 2px;
-}
-.brand-mark i { width: 3px; height: 6px; background: var(--accent); border-radius: 1px; }
-.brand-mark i:nth-child(2) { height: 14px; }
-.brand-mark i:nth-child(3) { height: 9px; }
 button, select {
     font: inherit;
     color: inherit;

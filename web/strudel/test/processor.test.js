@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
 
-import {noteSound, withPreset} from "../sound.js";
+import {noteSound, withInstrument} from "../sound.js";
 
 const wasmPath = fileURLToPath(new URL("../public/engine.wasm", import.meta.url));
 const wasmModule = await WebAssembly.compile(await readFile(wasmPath));
@@ -210,15 +210,16 @@ test("a gate's sound reaches the engine, and the next gate without one is a plai
 
 test("a kick takes the channel it asks for from the lowest priority and gives it back", () => {
     const processor = makeProcessor();
+    const instruments = {kick: {note: "e2", decay: 0.12, ayprio: 2}};
     const gate = (occurrence, value, pitch) => {
-        const {instrument, controls} = withPreset(value);
+        const {instrument, controls} = withInstrument(value, instruments);
         const sound = noteSound(controls, {pitch, cps: 0.5});
         return {frame: 0, generation: 1, gate: true, occurrence, instrument, pitch, velocity: 0.8, sound};
     };
     commands(processor, [
-        gate(1, {pan: 0.5, ayprio: 1}, 35),
-        gate(2, {pan: 0}, 59),
-        gate(3, {pan: 1}, 66),
+        gate(1, {pan: 0.5}, 35),
+        gate(2, {pan: 0, ayprio: 1}, 59),
+        gate(3, {pan: 1, ayprio: 1}, 66),
         gate(4, {s: "kick", pan: 0.5}, 40),
     ]);
     processRange(processor, 0, 9600);

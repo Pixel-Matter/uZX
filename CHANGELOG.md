@@ -9,9 +9,10 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 
 ### Krendel browser prototype
 
-- Play and live-edit bass and pluck patterns on one AY/YM chip, with a scrolling piano roll and channel, noise and envelope ownership.
+- Play and live-edit Strudel patterns on one AY/YM chip, with a scrolling piano roll and channel, noise and envelope ownership.
 - Controls shape a note: tone, noise and the chip's envelope, level and pitch envelopes, vibrato, the channel, and an ornament in scale steps. `.scale()` and Strudel's other tonal functions work.
-- Kick and snare drums: `s("kick ~ snare ~")`.
+- A pattern defines its instruments, drums included: `instrument("hat", note("c6").aynoise(1).decay(.04))`, then `s("kick hat")`.
+- Play and Stop are one button, and Strudel's keys work anywhere on the page: `Ctrl+Enter` plays or re-evaluates, `Ctrl+.` stops.
 
 ### Download
 - Linux: the download is a folder with the app as `uzx-player` or `uzx-studio`, its menu entry and icon, and `install.sh`, which adds it to the applications menu, where it was a single binary named `μZX Player`

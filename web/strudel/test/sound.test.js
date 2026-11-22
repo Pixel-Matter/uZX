@@ -1,9 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import {noteSound, ornamentSemitones, presetNames, shapes, soundLength, withPreset} from "../sound.js";
+import {instrumentNames, noteSound, ornamentSemitones, shapes, soundLength, withInstrument} from "../sound.js";
 
 const context = {pitch: 60, cps: 0.5};
+/** What a pattern's code might define with instrument(). */
+const instruments = {
+    pluck: {aynoise: 1, noisehold: 0.04, aynoiseperiod: 5, decay: 0.14},
+    kick: {note: "e2", decay: 0.12, ayprio: 2},
+};
 const fields = [
     "tone", "noise", "envelope", "drivesEnvelope", "restartEnvelope", "envelopeShape", "noisePeriod", "noiseHold",
     "priority", "pan", "attack", "decay", "sustain", "release", "pitchStart", "pitchPeak", "pitchAttack", "pitchDecay",
@@ -12,34 +17,36 @@ const fields = [
 
 /** The record's named fields, rounded to float precision, and its ornament. */
 function read(value, extra = {}) {
-    const {instrument, controls} = withPreset(value);
+    const {instrument, controls} = withInstrument(value, instruments);
     const sound = noteSound(controls, {...context, ...extra});
     assert.equal(sound.length, soundLength);
     const named = Object.fromEntries(fields.map((name, index) => [name, Math.round(sound[index] * 1e4) / 1e4]));
     return {...named, instrument, ornament: [...sound.slice(fields.length, fields.length + named.ornamentLength)]};
 }
 
-test("a note without controls is a plain bass tone", () => {
+test("a note without controls is a plain tone", () => {
     const sound = read({note: "c4"});
-    assert.deepEqual([sound.instrument, sound.tone, sound.noise, sound.envelope, sound.priority], [0, 1, 0, 0, 2]);
+    assert.deepEqual([sound.instrument, sound.tone, sound.noise, sound.envelope, sound.priority], [0, 1, 0, 0, 0]);
     assert.deepEqual([sound.attack, sound.decay, sound.sustain, sound.release, sound.pan], [0, 0, 1, 0, -1]);
 });
 
-test("a preset's controls yield to the note's own", () => {
+test("s selects an instrument, whose controls yield to the note's own", () => {
     const pluck = read({s: "pluck"});
     assert.deepEqual([pluck.instrument, pluck.noise, pluck.noiseHold, pluck.noisePeriod, pluck.decay, pluck.sustain],
         [1, 1, 0.04, 5, 0.14, 0]);
     assert.equal(read({s: "pluck", aynoise: 0}).noise, 0);
-    assert.throws(() => read({s: "piano"}), /Unknown AY\/YM instrument "piano"/);
+    // A drum has a pitch of its own, which the note's pitch replaces.
+    assert.deepEqual(withInstrument({s: "kick"}, instruments),
+        {instrument: 2, controls: {note: "e2", decay: 0.12, ayprio: 2, s: "kick"}});
+    assert.equal(withInstrument({s: "kick", note: "c2"}, instruments).controls.note, "c2");
+    // A name's place is its tag in the trace and its color in the piano roll. A note without `s` comes first.
+    assert.deepEqual(instrumentNames(instruments), ["note", "pluck", "kick"]);
 });
 
-test("a drum has a pitch of its own, which the note's pitch replaces", () => {
-    assert.equal(withPreset({s: "kick"}).controls.note, "e2");
-    assert.equal(withPreset({s: "kick", note: "c2"}).controls.note, "c2");
-    const snare = read({s: "snare"});
-    assert.deepEqual([snare.instrument, snare.noise, snare.noiseHold, snare.priority], [3, 1, 0, 3]);
-    // A name's place is its tag in the trace and its color in the piano roll.
-    assert.deepEqual(presetNames, ["bass", "pluck", "kick", "snare"]);
+test("an instrument that the code did not define is an error", () => {
+    assert.throws(() => read({s: "piano"}), /No instrument "piano". Define it: instrument\("piano"/);
+    assert.throws(() => withInstrument({s: "note"}), /No instrument "note"/);
+    assert.deepEqual(instrumentNames({}), ["note"]);
 });
 
 test("chip controls set the timbre", () => {

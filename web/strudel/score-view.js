@@ -2,7 +2,10 @@ const labelWidth = 55
 const pastRatio = 0.72
 const historySeconds = 2.25
 const futureSeconds = historySeconds / pastRatio - historySeconds
-const colors = ['#92cff0', '#f0bc78', '#f08f9a', '#c3a8f5']  // by instrument tag
+// By instrument tag. Each of the last four is told from all the others with deuteranopia, protanopia and
+// tritanopia as well.
+const colors = ['#92cff0', '#f0bc78', '#f08f9a', '#c3a8f5', '#5aa925', '#d05ccf', '#cef034', '#44f5c0']
+const colorOf = tag => colors[tag] ?? '#a3b0a9'  // past the palette, instruments share a gray
 const ownerLanes = [
     ['A', 'a'], ['B', 'b'], ['C', 'c'], ['Noise', 'noise'], ['Envelope', 'envelope'],
 ]
@@ -29,12 +32,15 @@ function surface(canvas) {
     return { ctx, width, height }
 }
 
-/** Puts the instruments before the legend's other entries, each with the color of its notes. */
+/** Shows these instruments before the legend's other entries, each with the color of its notes,
+    in place of those shown before. */
 export function showInstruments(legend, names) {
+    for (const shown of legend.querySelectorAll('[data-instrument]')) shown.remove()
     legend.prepend(...names.map((name, tag) => {
         const entry = document.createElement('span')
+        entry.dataset.instrument = name
         const swatch = document.createElement('i')
-        swatch.style.background = colors[tag]
+        swatch.style.background = colorOf(tag)
         entry.append(swatch, name[0].toUpperCase() + name.slice(1))
         return entry
     }))
@@ -125,7 +131,7 @@ export class ScoreView {
         for (const note of future) {
             const left = x(Math.max(note.frame, now))
             const right = Math.min(width, x(note.end))
-            ctx.fillStyle = colors[note.instrument]
+            ctx.fillStyle = colorOf(note.instrument)
             ctx.fillRect(left, y(note.pitch) - barHeight / 2, Math.max(1, right - left - 1), barHeight)
         }
 
@@ -133,7 +139,7 @@ export class ScoreView {
             const allocated = new Set(Object.values(record.owners))
             for (const voice of record.voices) {
                 const middle = y(voice.pitch)
-                const color = colors[voice.instrument]
+                const color = colorOf(voice.instrument)
                 if (allocated.has(voice.id)) {
                     const thickness = Math.max(2, barHeight * Math.sqrt(voice.level))
                     ctx.fillStyle = color
@@ -187,7 +193,7 @@ export class ScoreView {
         })
         segments.forEach((lane, i) => {
             for (const { voice, left, right } of lane) {
-                ctx.fillStyle = colors[voice.instrument]
+                ctx.fillStyle = colorOf(voice.instrument)
                 ctx.fillRect(left, i * row + 5, right - left, row - 10)
                 const label = pitchLabel(Math.round(voice.pitch))
                 if (right - left >= ctx.measureText(label).width + 9) {

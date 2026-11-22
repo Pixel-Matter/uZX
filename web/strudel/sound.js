@@ -8,17 +8,6 @@ const ornamentAt = 23
 /** Envelope shapes in the engine's order, as `ayshape` names them. */
 export const shapes = ['tri', 'trifall', 'saw', 'sawfall', 'attack', 'decay', 'attackcut', 'decayhold']
 
-/** What `s` selects: controls a note gets unless it sets them itself. A note without `s` is a bass. */
-const presets = {
-    bass: { ayprio: 2 },
-    pluck: { ayprio: 1, aynoise: 1, noisehold: 0.04, aynoiseperiod: 5, decay: 0.14 },
-    // A drum has a pitch of its own, so `s("kick snare")` plays without a note, and takes a channel from any note.
-    kick: { note: 'e2', penv: 36, pdecay: 0.08, decay: 0.12, ayprio: 3 },
-    snare: { note: 'a3', penv: 12, pdecay: 0.04, aynoise: 1, aynoiseperiod: 8, decay: 0.14, ayprio: 3 },
-}
-/** The names `s` accepts. A name's place here is the instrument tag of its notes. */
-export const presetNames = Object.keys(presets)
-
 const toSwitch = x => (x === true || Number(x) >= 0.5 ? 1 : 0)
 const number = (x, fallback) => (x === undefined ? fallback : Number(x))
 
@@ -57,13 +46,19 @@ function pitchEnvelope({ penv, pattack, pdecay }) {
         : [0, Number(penv), number(pattack, 0), Number(pdecay)]
 }
 
-/** A Strudel event's controls over those of the preset its `s` names, with that preset's instrument tag. */
-export function withPreset(value) {
-    const name = value.s ?? 'bass'
-    if (!presetNames.includes(name)) {
-        throw new Error(`Unknown AY/YM instrument "${name}". Choose ${presetNames.join(', ')}, or set controls.`)
+/** The names by instrument tag, as the piano roll's legend shows them: a note without `s`, then the instruments
+    that a pattern's code defined. */
+export const instrumentNames = instruments => ['note', ...Object.keys(instruments)]
+
+/** A Strudel event's controls over those of the instrument its `s` names, with the instrument's tag.
+    `instruments` has the controls of each instrument that the pattern's code defined. */
+export function withInstrument(value, instruments = {}) {
+    if (value.s === undefined) return { instrument: 0, controls: value }
+    const tag = instrumentNames(instruments).indexOf(value.s, 1)
+    if (tag < 0) {
+        throw new Error(`No instrument "${value.s}". Define it: instrument("${value.s}", note("c2").decay(.1))`)
     }
-    return { instrument: presetNames.indexOf(name), controls: { ...presets[name], ...value } }
+    return { instrument: tag, controls: { ...instruments[value.s], ...value } }
 }
 
 /** The engine's record for a note with the controls `v`. `pitch` is its MIDI pitch, `cps` the tempo in cycles

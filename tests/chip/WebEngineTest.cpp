@@ -156,6 +156,16 @@ void testLevelEnvelope() {
     check(renderFrames(1).count == 0, "the note ends when its release does");
 }
 
+void testWholeFrameTimes() {
+    check(uzx_init(48000, 0) == 1, "engine should initialize");
+    auto& sound = *uzx_note_sound();
+    sound.noise = 1.0f;
+    sound.noiseHold = 0.3f;  // 15 frames: times 50, a float makes it a hair more
+    check(uzx_note_on(1, 0, 60.0f, 1.0f) == 1, "note accepted");
+    check(renderFrames(15).noise == 1, "the noise sounds through its fifteenth frame");
+    check(renderFrames(1).noise == 0, "a time of whole frames ends on the frame");
+}
+
 void testPitchShaping() {
     check(uzx_init(48000, 0) == 1, "engine should initialize");
     auto& sound = *uzx_note_sound();
@@ -250,6 +260,7 @@ int main() {
     testPluckTraceAndReset();
     testSoundIsUsedOnce();
     testLevelEnvelope();
+    testWholeFrameTimes();
     testPitchShaping();
     testEnvelopeDriverTakesNoChannel();
     testNoteOffAndShortGate();

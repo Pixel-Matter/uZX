@@ -51,9 +51,14 @@ bool isOn(float value) noexcept {
     return value >= 0.5f;
 }
 
-/** A time in frames. Anything that is not a positive time is 0. */
+/** A time in frames. Anything that is not a positive time is 0. A time within a thousandth of a frame of a whole
+    frame is that frame: 15/50 s as a float is a hair more than 15 frames, and would last 16. */
 float framesIn(float seconds) noexcept {
-    return seconds > 0.0f ? std::min(seconds, MAX_SECONDS) * static_cast<float>(FRAME_RATE) : 0.0f;
+    if (!(seconds > 0.0f))
+        return 0.0f;
+    const auto frames = std::min(seconds, MAX_SECONDS) * static_cast<float>(FRAME_RATE);
+    const auto whole = std::nearbyint(frames);
+    return std::abs(frames - whole) < 0.001f ? whole : frames;
 }
 
 /** The level while the gate is open: attack, decay, sustain. */

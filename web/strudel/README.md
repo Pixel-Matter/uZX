@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open the localhost URL printed by Vite. Select a chip and press **Play**. Edit the pattern and press **Re-evaluate** to switch on the next cycle. A syntax error appears below the editor while the last valid pattern continues. To change the global tempo with `setcps` or `setcpm`, stop and play the edited pattern.
+Open the localhost URL printed by Vite. Select a chip and press **Play**; the same button then stops. Edit the pattern and press **Re-evaluate** to switch on the next cycle. The keys are Strudel's, anywhere on the page: `Ctrl+Enter` or `Alt+Enter` plays, or re-evaluates while playing, and `Ctrl+.` or `Alt+.` stops. A syntax error appears below the editor while the last valid pattern continues. To change the global tempo with `setcps` or `setcpm`, stop and play the edited pattern.
 
 The playhead separates rendered history on the left from scheduled notes on the right. Expand **Chip ownership** to see which occurrence holds A, B, C, noise and envelope. An unallocated note can stay visible in the roll while another note uses its channel.
 
@@ -23,7 +23,17 @@ For a production build, run `npm run build` after the WASM build, then `npm run 
 
 ## A note's sound
 
-A note is a plain square tone unless controls say otherwise. An instrument is a function that sets controls, such as `const pluck = p => p.aynoise(1).noisehold(.04).decay(.14)`, applied as `pluck(note("c4 e4"))`. Times inside a note are in seconds, so the tempo doesn't stretch them. `s` selects a built-in set of controls: `bass`, `pluck`, `kick` or `snare`; a control on the note overrides the set's. A drum has a pitch of its own, so `s("kick ~ snare ~")` plays without a note, and the highest priority, so it takes a channel from another note while it sounds. To have the drums share the bass's channel, give them its `pan` and the bass a lower `ayprio`.
+A note is a plain square tone unless controls say otherwise. Times inside a note are in seconds, so the tempo doesn't stretch them. The chip's sound changes 50 times a second, so count a time in these frames: with `const f = 1/50`, `decay(7*f)` lasts seven. An instrument is a function that sets controls, such as `const pluck = p => p.aynoise(1).noisehold(2*f).decay(7*f)`, applied as `pluck(note("c4 e4"))`.
+
+`instrument("hat", note("c6").aytone(0).aynoise(1).decay(2*f))` gives a set of controls a name for `s`, so that one sequence can mix instruments: `s("kick hat snare hat")`. The second argument is the controls, or a function that sets them, such as the `pluck` above. There are no built-in instruments: every name is defined in the pattern's code, and a control on the note overrides the instrument's. A definition takes effect when its pattern does, and each instrument has its own color in the piano roll.
+
+A drum is an instrument with a note of its own, so it plays without one, and a high `ayprio`, so it takes a channel from another note while it sounds. To have the drums share the bass's channel, give them its `pan` and the bass the lowest `ayprio`. A tracker's drum sample becomes `orn` offsets, one frame each, for the tone's fall, `noisehold` for the frames with noise, and `decay` for the level:
+
+```js
+const f = 1/50 // a frame
+instrument("kick", note("c2").orn("20.7:13.7:8.7:6.7:6.7:4.9:3.2:1.7:0.3")
+  .aynoise(1).noisehold(f).aynoiseperiod(8).decay(8.3*f).gain(1).ayprio(2))
+```
 
 | Control | Sets |
 | --- | --- |
@@ -33,7 +43,7 @@ A note is a plain square tone unless controls say otherwise. An instrument is a 
 | `ayretrig` | 1: the note restarts the envelope it drives |
 | `aynoiseperiod` | 0 highest noise … 31 lowest |
 | `noisehold` | The noise sounds only this long from the note's start |
-| `ayprio` | Who plays when the chip has too few channels: the higher, then the later |
+| `ayprio` | Who plays when the chip has too few channels: the higher, then the later. 0 to 127; 0 unless set |
 | `pan` | The channel: 0 is A, 0.5 is B, 1 is C |
 | `attack`, `decay`, `sustain`, `release` | The level, as in Strudel. A decay without a sustain level falls to silence and ends the note |
 | `penv`, `pattack`, `pdecay` | The pitch, in semitones. With `pdecay` the note starts `penv` away and comes back; with `pattack` alone it arrives from `penv` below |

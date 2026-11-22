@@ -27,15 +27,17 @@
       <div class="panel-header">
         <h2 id="editor-heading">Pattern</h2>
         <div class="transport">
-          <button type="button" id="play" class="primary"><span aria-hidden="true">▶</span> Play</button>
+          <button type="button" id="play" class="primary">
+            <span id="playLabel" title="Ctrl+Enter"><span aria-hidden="true">▶</span> Play</span>
+            <span id="stopLabel" title="Ctrl+." hidden><span aria-hidden="true">■</span> Stop</span>
+          </button>
           <button type="button" id="update" title="Ctrl+Enter" disabled>Re-evaluate</button>
-          <button type="button" id="stop" title="Ctrl+." disabled><span aria-hidden="true">■</span> Stop</button>
         </div>
       </div>
       <div id="editor"></div>
       <div class="editor-footer">
         <output id="status" role="status">Ready</output>
-        <p><kbd>Ctrl</kbd> + <kbd>Enter</kbd> evaluates <span aria-hidden="true">·</span> <kbd>Ctrl</kbd> + <kbd>.</kbd> stops</p>
+        <p><kbd>Ctrl</kbd> + <kbd>Enter</kbd> plays or re-evaluates <span aria-hidden="true">·</span> <kbd>Ctrl</kbd> + <kbd>.</kbd> stops</p>
       </div>
       <p id="error" role="alert" hidden></p>
     </section>

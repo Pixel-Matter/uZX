@@ -40,7 +40,7 @@ Keep these JUCE types where the shared model benefits from them. Before dependin
 
 ## Scrolling notes and chip ownership
 
-Give the piano roll and chip lanes one horizontal time axis and one playhead anchored to the audio output clock. Color by instrument throughout. Draw scheduled pitch and duration ahead of the cursor. Behind it, draw fractional pitch and level from the rendered note frames, including voices that lost allocation. Use separate styling for an unallocated voice so a held score note remains legible when it loses its channel. Keep the roll usable with the chip lanes collapsed.
+Give the piano roll and chip lanes one horizontal time axis and one playhead anchored to the audio output clock. Color by instrument throughout. Draw scheduled pitch and duration ahead of the cursor. Behind it, draw fractional pitch and level from the rendered note frames, including voices that lost allocation. Use separate styling for an unallocated voice so a held score note remains legible when it loses its channel. Draw both behind the code, as Strudel draws its visuals, so that the code keeps the whole window.
 
 The trace carries generation, sample frame, voice occurrence, instrument, pitch and level, plus the owners of A/B/C, noise and envelope and any envelope restart. Record silence and owner changes even when two owners yield identical register values. The UI can associate an occurrence with its Strudel source span when available. Transfer batches from the worklet at display cadence and draw from bounded history. Observe the trace at the output playhead so buffered future audio does not appear as already heard. [Native PSG visualization conventions](../psg-visualization.md)
 

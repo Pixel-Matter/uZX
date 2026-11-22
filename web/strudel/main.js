@@ -3,10 +3,12 @@ import * as mini from '@strudel/mini'
 import * as tonal from '@strudel/tonal'
 import { transpiler } from '@strudel/transpiler'
 import { initEditor, updateMiniLocations, highlightMiniLocations } from '@strudel/codemirror'
+import { marked } from 'marked'
 import { ChipAudio } from './audio.js'
 import { controls } from './controls.js'
 import { instrumentNames, noteSound, withInstrument } from './sound.js'
 import { ScoreView, showInstruments } from './score-view.js'
+import help from './help.md?raw'
 import './style.css'
 
 const example = `// An instrument is a function that sets controls. Times inside a note are in seconds.
@@ -48,12 +50,15 @@ stack(
 )`
 
 const ui = Object.fromEntries(
-    ['editor', 'play', 'playLabel', 'stopLabel', 'update', 'chip', 'status', 'error', 'legend', 'score', 'owners', 'ownership']
+    ['editor', 'play', 'playLabel', 'stopLabel', 'update', 'chip', 'status', 'error', 'legend', 'score', 'ownership', 'help']
         .map(id => [id, document.getElementById(id)]),
 )
 const engine = new ChipAudio()
-const view = new ScoreView(ui.score, ui.ownership, ui.owners)
+const view = new ScoreView(ui.score, ui.ownership)
 showInstruments(ui.legend, instrumentNames({}))
+// The panel shows help.md, with its headings a level under the page's.
+marked.use({ walkTokens: token => { if (token.type === 'heading') token.depth++ } })
+ui.help.innerHTML = marked.parse(help)
 
 const defaultFps = 50 // a ZX Spectrum's frames
 let defining // what the code under evaluation has set so far: its instruments, frame rate and tempo in frames
@@ -432,7 +437,4 @@ const sizeObserver = new ResizeObserver(() => {
     view.draw(active ? engine.outputFrame : 0, engine.sampleRate || 48000)
 })
 sizeObserver.observe(ui.score)
-ui.owners.addEventListener('toggle', () => {
-    if (ui.owners.open) view.draw(active ? engine.outputFrame : 0, engine.sampleRate || 48000)
-})
 requestAnimationFrame(redraw)

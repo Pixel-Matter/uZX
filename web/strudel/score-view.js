@@ -1,4 +1,4 @@
-const labelWidth = 55
+const labelInset = 22 // the labels are at the right edge, clear of the editor's scrollbar
 const pastRatio = 0.72
 const historySeconds = 2.25
 const futureSeconds = historySeconds / pastRatio - historySeconds
@@ -29,7 +29,16 @@ function surface(canvas) {
     ctx.clearRect(0, 0, width, height)
     ctx.font = '11px ui-monospace, monospace'
     ctx.textBaseline = 'middle'
+    ctx.textAlign = 'left'
     return { ctx, width, height }
+}
+
+/** A label at the right edge of a row whose middle is `y`. */
+function label({ ctx, width }, text, y) {
+    ctx.fillStyle = '#a3b0a9'
+    ctx.textAlign = 'right'
+    ctx.fillText(text, width - labelInset, y)
+    ctx.textAlign = 'left'
 }
 
 /** Shows these instruments before the legend's other entries, each with the color of its notes,
@@ -46,11 +55,11 @@ export function showInstruments(legend, names) {
     }))
 }
 
+/** The piano roll and, under it, the chip's lanes. Both are the editor's backdrop and share a time axis. */
 export class ScoreView {
-    constructor(score, ownership, details) {
+    constructor(score, ownership) {
         this.score = score
         this.ownership = ownership
-        this.details = details
         this.clear()
     }
 
@@ -80,13 +89,13 @@ export class ScoreView {
         while (this.trace.length > 1 && this.trace[1].frame < earliest) this.trace.shift()
 
         const score = surface(this.score)
-        if (score.width <= labelWidth) return
-        const playhead = labelWidth + (score.width - labelWidth) * pastRatio
-        const scale = (playhead - labelWidth) / (historySeconds * rate)
+        if (!score.width) return
+        const playhead = score.width * pastRatio
+        const scale = playhead / (historySeconds * rate)
         const axis = { now, playhead, earliest, rate, x: frame => playhead + (frame - now) * scale }
         const heard = this.trace.filter(record => record.frame <= now)
         this.drawScore(score, axis, heard)
-        if (this.details.open) this.drawOwners(surface(this.ownership), axis, heard)
+        this.drawOwners(surface(this.ownership), axis, heard)
     }
 
     drawBackground({ ctx, width, height }, { now, playhead, earliest, rate, x }) {
@@ -117,14 +126,11 @@ export class ScoreView {
         const y = pitch => height - (pitch - low + 0.5) * step
         const barHeight = Math.max(3, step * 0.78)
 
-        ctx.fillStyle = '#1a221e'
-        ctx.fillRect(0, 0, labelWidth, height)
         for (let pitch = Math.max(0, low); pitch <= high; pitch++) {
             if (pitch % 12 === 0) {
                 ctx.fillStyle = '#304036'
-                ctx.fillRect(labelWidth, y(pitch), width - labelWidth, 1)
-                ctx.fillStyle = '#a3b0a9'
-                ctx.fillText(pitchLabel(pitch), 12, y(pitch))
+                ctx.fillRect(0, y(pitch), width, 1)
+                label(surface, pitchLabel(pitch), y(pitch))
             }
         }
 
@@ -166,14 +172,11 @@ export class ScoreView {
         const { ctx, width, height } = surface
         const { earliest, now, playhead, x } = axis
         this.drawBackground(surface, axis)
-        ctx.fillStyle = '#1a221e'
-        ctx.fillRect(0, 0, labelWidth, height)
         const row = height / ownerLanes.length
-        ownerLanes.forEach(([label], i) => {
+        ownerLanes.forEach(([name], i) => {
             ctx.fillStyle = '#304036'
             ctx.fillRect(0, i * row, width, 1)
-            ctx.fillStyle = '#a3b0a9'
-            ctx.fillText(label, 5, i * row + row / 2)
+            label(surface, name, i * row + row / 2)
         })
 
         const segments = ownerLanes.map(() => [])
@@ -195,10 +198,10 @@ export class ScoreView {
             for (const { voice, left, right } of lane) {
                 ctx.fillStyle = colorOf(voice.instrument)
                 ctx.fillRect(left, i * row + 5, right - left, row - 10)
-                const label = pitchLabel(Math.round(voice.pitch))
-                if (right - left >= ctx.measureText(label).width + 9) {
+                const pitch = pitchLabel(Math.round(voice.pitch))
+                if (right - left >= ctx.measureText(pitch).width + 9) {
                     ctx.fillStyle = '#191e19'
-                    ctx.fillText(label, left + 4, (i + 0.5) * row)
+                    ctx.fillText(pitch, left + 4, (i + 0.5) * row)
                 }
             }
         })

@@ -4,60 +4,44 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#121816">
+  <base target="_blank">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%2327392d%27/%3E%3Cpath d=%27M10 20V13m6 11V8m6 14V11%27 stroke=%27%23c0eb9a%27 stroke-width=%274%27/%3E%3C/svg%3E">
   <title>Krendel</title>
 </head>
 <body>
+  <header>
+    <h1><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Krendel</h1>
+    <button type="button" id="play" class="primary">
+      <span id="playLabel" title="Ctrl+Enter"><span aria-hidden="true">▶</span> Play</span>
+      <span id="stopLabel" title="Ctrl+." hidden><span aria-hidden="true">■</span> Stop</span>
+    </button>
+    <button type="button" id="update" title="Ctrl+Enter" disabled>Update</button>
+    <output id="status" role="status">Ready</output>
+    <div class="legend" id="legend" aria-label="Instruments">
+      <span><i class="contended"></i>Unallocated</span>
+    </div>
+    <label>Chip
+      <select id="chip">
+        <option value="ay">AY-3-8910</option>
+        <option value="ym">YM2149</option>
+      </select>
+    </label>
+  </header>
+
   <main>
-    <header class="page-header">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-        <div><h1>Krendel</h1><p>live coding for AY/YM music chip</p></div>
-      </div>
-      <div class="chip-selection">
-        <label for="chip">Sound chip</label>
-        <select id="chip">
-          <option value="ay">AY-3-8910</option>
-          <option value="ym">YM2149</option>
-        </select>
-      </div>
-    </header>
-
-    <section class="panel" aria-labelledby="editor-heading">
-      <div class="panel-header">
-        <h2 id="editor-heading">Pattern</h2>
-        <div class="transport">
-          <button type="button" id="play" class="primary">
-            <span id="playLabel" title="Ctrl+Enter"><span aria-hidden="true">▶</span> Play</span>
-            <span id="stopLabel" title="Ctrl+." hidden><span aria-hidden="true">■</span> Stop</span>
-          </button>
-          <button type="button" id="update" title="Ctrl+Enter" disabled>Re-evaluate</button>
-        </div>
-      </div>
-      <div id="editor"></div>
-      <div class="editor-footer">
-        <output id="status" role="status">Ready</output>
-        <p><kbd>Ctrl</kbd> + <kbd>Enter</kbd> plays or re-evaluates <span aria-hidden="true">·</span> <kbd>Ctrl</kbd> + <kbd>.</kbd> stops</p>
-      </div>
-      <p id="error" role="alert" hidden></p>
-    </section>
-
-    <section class="panel" aria-labelledby="score-heading">
-      <div class="panel-header">
-        <h2 id="score-heading">Piano roll</h2>
-        <div class="legend" id="legend" aria-label="Instruments">
-          <span><i class="contended"></i>Unallocated</span>
-        </div>
-      </div>
-      <div class="timeline-key"><span>Rendered history</span><span>Scheduled notes</span></div>
+    <!-- The code, over the piano roll and the chip's lanes. -->
+    <section id="stage" aria-label="Pattern">
       <canvas id="score" role="img" aria-label="Piano roll with rendered voices to the left of the playhead and scheduled notes to the right"></canvas>
-      <details open id="owners">
-        <summary>Chip ownership</summary>
-        <canvas id="ownership" role="img" aria-label="Rendered tone channel A, B, C, noise and envelope ownership"></canvas>
-      </details>
+      <canvas id="ownership" role="img" aria-label="Rendered tone channel A, B, C, noise and envelope ownership"></canvas>
+      <div id="editor"></div>
     </section>
+    <p id="error" role="alert" hidden></p>
+
+    <aside aria-label="Help">
+      <div id="help"></div>
+      <footer>Live coding for the AY/YM music chip <span aria-hidden="true">·</span> inspired by <a href="https://strudel.cc/">Strudel</a></footer>
+    </aside>
   </main>
-  <footer>Inspired by <a href="https://strudel.cc/">Strudel</a></footer>
   <script type="module" src="/main.js"></script>
 </body>
 </html>

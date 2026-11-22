@@ -15,7 +15,8 @@
     "@strudel/mini": "1.2.6",
     "@strudel/tonal": "1.2.6",
     "@strudel/transpiler": "1.2.6",
-    "@tonaljs/tonal": "4.10.0"
+    "@tonaljs/tonal": "4.10.0",
+    "marked": "18.2.1"
   },
   "devDependencies": {
     "vite": "6.4.2"

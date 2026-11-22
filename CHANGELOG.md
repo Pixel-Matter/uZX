@@ -14,7 +14,8 @@ All notable changes to μZX are documented here. μZX currently supports AY-3-89
 - A pattern defines its instruments, drums included: `instrument("hat", note("c6").noise(1).decay(.04))`, then `s("kick hat")`.
 - A tracker's sample plays frame by frame: `vols` is a table of the volume, `periods` or `freqs` of the tone.
 - `setfps(50)` sets how many times a second the chip's sound changes, and `setfpb(24)` the tempo as the frames in a beat, so that notes start on frames.
-- Play and Stop are one button, and Strudel's keys work anywhere on the page: `Ctrl+Enter` plays or re-evaluates, `Ctrl+.` stops.
+- Play and Stop are one button, and Strudel's keys work anywhere on the page: `Ctrl+Enter` plays or updates, `Ctrl+.` stops.
+- The code fills the window, with the piano roll behind it and the help in a panel on the right.
 
 ### Download
 - Linux: the download is a folder with the app as `uzx-player` or `uzx-studio`, its menu entry and icon, and `install.sh`, which adds it to the applications menu, where it was a single binary named `μZX Player`

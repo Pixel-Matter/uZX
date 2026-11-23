@@ -1,6 +1,6 @@
 # Strudel → Studio over MIDI
 
-**Status: proposal, not implemented.** Play the AY chip in Studio live from [Strudel](https://strudel.cc) in the browser, through a virtual MIDI port. Strudel's `.midi()` output and Studio's track input already make this work with raw note and controller numbers. The proposal adds a small JS module that names the controls MIDI to PSG reads, a user-guide section, and, as a separate step, Studio following Strudel's MIDI clock. It complements [krendel-wasm.md](krendel-wasm.md), which runs the chip inside the browser; this one keeps the chip in Studio.
+**Status: proposal, not implemented.** Play the AY chip in Studio live from [Strudel](https://strudel.cc) in the browser, through a virtual MIDI port. Strudel's `.midi()` output and Studio's track input already make this work with raw note and controller numbers. The proposal adds a small JS module that names the controls MIDI to PSG reads, a user-guide section, and, as a separate step, Studio following Strudel's MIDI clock. It complements [Krendel](https://pixelmatter.org/krendel/), which runs the chip inside the browser; this one keeps the chip in Studio.
 
 ## Prior art
 
